@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ALLOWED_IMAGE_TYPES, setBanner, uploadEventImage } from '../api/events'
 import { errorMessage } from '../lib/errors'
 import Button from './Button'
+import RemoteImage from './RemoteImage'
 import Alert from './Alert'
 
 /**
@@ -52,7 +53,12 @@ export default function BannerUploader({ eventId, bannerUrl, onChange }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="relative aspect-video w-full max-w-xs shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
           {bannerUrl ? (
-            <img src={bannerUrl} alt="Event banner" className="size-full object-cover" />
+            <RemoteImage
+              src={bannerUrl}
+              alt="Event banner"
+              className="size-full object-cover"
+              fallbackLabel="Banner unavailable"
+            />
           ) : (
             <div className="flex size-full items-center justify-center text-xs text-gray-400">
               No banner yet

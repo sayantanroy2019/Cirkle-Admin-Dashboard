@@ -20,11 +20,11 @@ export const NAV_GROUPS = [
   {
     label: 'Oversight',
     items: [
-      { to: '/orders', label: 'Orders', built: false },
-      { to: '/tickets', label: 'Tickets', built: false },
-      { to: '/revenue', label: 'Revenue', built: false },
-      { to: '/invitations', label: 'Invitations', built: false },
-      { to: '/users', label: 'Users', built: false },
+      { to: '/orders', label: 'Orders', built: true },
+      { to: '/tickets', label: 'Tickets', built: true },
+      { to: '/revenue', label: 'Revenue', built: true },
+      { to: '/invitations', label: 'Invitations', built: true },
+      { to: '/users', label: 'Users', built: true },
     ],
   },
   {

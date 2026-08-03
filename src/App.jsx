@@ -9,6 +9,14 @@ import OrganizerDetailPage from './pages/OrganizerDetailPage'
 import EventsPage from './pages/EventsPage'
 import EventCreatePage from './pages/EventCreatePage'
 import EventDetailPage from './pages/EventDetailPage'
+import OrdersPage from './pages/OrdersPage'
+import OrderDetailPage from './pages/OrderDetailPage'
+import TicketsPage from './pages/TicketsPage'
+import TicketDetailPage from './pages/TicketDetailPage'
+import RevenuePage from './pages/RevenuePage'
+import InvitationsPage from './pages/InvitationsPage'
+import UsersPage from './pages/UsersPage'
+import UserDetailPage from './pages/UserDetailPage'
 import AdminsPage from './pages/AdminsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { LANDING_PATH } from './nav'
@@ -32,7 +40,15 @@ export default function App() {
             <Route path="/events/new" element={<EventCreatePage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
 
-            {/* Section 4 (oversight) mounts here as it lands. */}
+            {/* Oversight — read-only. */}
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/tickets" element={<TicketsPage />} />
+            <Route path="/tickets/:id" element={<TicketDetailPage />} />
+            <Route path="/revenue" element={<RevenuePage />} />
+            <Route path="/invitations" element={<InvitationsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:id" element={<UserDetailPage />} />
 
             {/* The portal's one role gate. Nested inside Layout so a BD admin
                 who types the URL still gets the sidebar around the refusal. */}

@@ -78,6 +78,22 @@ export const localInputToIso = (value) => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+/** UUIDs are unreadable in a table — show the leading block, full value on hover. */
+export const shortId = (id) => (id ? String(id).split('-')[0] : '—')
+
+/** "man" → "Man"; null → "—". */
+export const titleCaseOrDash = (value) => {
+  if (!value) return '—'
+  const s = String(value).replace(/_/g, ' ')
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+/** "Ada" + "Lovelace" → "Ada Lovelace"; both null → "—". */
+export const fullName = (firstName, lastName) => {
+  const name = [firstName, lastName].filter(Boolean).join(' ').trim()
+  return name || '—'
+}
+
 /* ── Event display helpers ─────────────────────────────────────────── */
 
 export const EVENT_TYPE_LABELS = {

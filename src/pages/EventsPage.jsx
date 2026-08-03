@@ -8,6 +8,7 @@ import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
 import Select from '../components/Select'
+import Badge from '../components/Badge'
 import Spinner from '../components/Spinner'
 
 const COLUMNS = ['Event', 'Organizer', 'Category', 'City', 'Starts', 'Price', 'Type', 'Status']
@@ -16,19 +17,6 @@ const STATUS_OPTIONS = [
   { id: 'upcoming', label: 'Upcoming' },
   { id: 'past', label: 'Past' },
 ]
-
-function Badge({ children, tone = 'gray' }) {
-  const tones = {
-    gray: 'bg-gray-100 text-gray-600',
-    purple: 'bg-brand-light text-brand',
-    green: 'bg-green-50 text-green-700',
-  }
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>
-      {children}
-    </span>
-  )
-}
 
 function SkeletonRows() {
   return Array.from({ length: 4 }, (_, i) => (

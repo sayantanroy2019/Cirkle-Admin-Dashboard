@@ -7,6 +7,7 @@ import {
 } from '../api/events'
 import { errorMessage } from '../lib/errors'
 import Button from './Button'
+import RemoteImage from './RemoteImage'
 import Alert from './Alert'
 
 /**
@@ -150,7 +151,11 @@ export default function GalleryManager({ eventId, gallery, onChange }) {
             key={p.key ?? i}
             className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
           >
-            <img src={p.url} alt={`Gallery image ${i + 1}`} className="size-full object-cover" />
+            <RemoteImage
+              src={p.url}
+              alt={`Gallery image ${i + 1}`}
+              className="size-full object-cover"
+            />
             <span className="absolute top-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white">
               {i + 1}
             </span>

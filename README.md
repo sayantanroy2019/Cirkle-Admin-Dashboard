@@ -75,7 +75,9 @@ src/
   store/authStore.js    zustand + persist; token, admin, role helpers
   nav.js                sidebar sections; single source of the role gate
   lib/                  errorMessage(), date formatting
-  components/           Layout, Sidebar, ProtectedRoute, RoleRoute, Field, …
+  api/oversight.js      the five read-only endpoints; pagination envelope
+  components/           Layout, Sidebar, DataTable, Pagination, Contact, …
+  hooks/                usePaginatedList, useAsync, useEventOptions, useDebouncedValue
   pages/                LoginPage, Organizer{s,Create,Detail}Page, AdminsPage, …
 ```
 
@@ -115,13 +117,28 @@ For events (confirmed against Swagger and live responses on 2026-08-02):
   save response carry `s3Key` per item, so `GalleryManager` stages the whole
   set locally and commits it in one call.
 
+For the oversight endpoints (confirmed 2026-08-03):
+
+Unlike the organizer/event endpoints, these **are** properly paginated:
+`{ data, total, limit, offset }`, `limit` defaults to 50 and is clamped to 100
+server-side. `usePaginatedList` drives every table; `DataTable` renders it.
+
+One trap worth knowing: `GET /admin/orders` compares `from`/`to` **directly
+against `created_at`**, so a bare `to=2026-07-28` means midnight and a
+single-day range returns nothing. `dayRangeToInstants` widens the admin's chosen
+calendar days into the UTC instants that actually bracket them.
+
+Phone and email render only through `components/Contact.jsx`, mirroring the
+backend's serializer discipline — when a `view_pii` capability lands, masking is
+a one-file change here rather than a dozen table cells.
+
 ## Build progress
 
 - [x] **0** Foundation — API layer, auth store, role-aware routing, sidebar shell
 - [x] **1** Login
 - [x] **2** Organizers — create / list / edit
 - [x] **3** Events — create / list / edit + image upload
-- [ ] **4** Oversight — orders, tickets, revenue, invitations, users
+- [x] **4** Oversight — orders, tickets, revenue, invitations, users
 - [ ] **5** Admins — create / manage admin accounts (administrative only)
 
 Nav items for unbuilt sections render greyed and inert. As each lands, flip
