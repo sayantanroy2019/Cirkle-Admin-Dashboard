@@ -7,9 +7,15 @@ import api from './client'
  * for the list, `{ organizer }` for the singular ones. Unwrapping happens here
  * and nowhere else, so the pages only ever see plain objects.
  *
- * Verified against the live API on 2026-08-01. An organizer reads:
- *   { id, email, displayName, isActive, createdAt, eventCount }
+ * Verified against the live API on 2026-08-03. An organizer reads:
+ *   { id, email, displayName, instagram, isActive, createdAt, eventCount }
  * There is no `updatedAt` in any response, and `password_hash` never appears.
+ *
+ * `instagram` is an optional bare handle. Both create and update accept it —
+ * Swagger's request bodies don't list it, but the implementation reads it on
+ * POST and PATCH (verified live). It's normalized server-side: a profile URL,
+ * an @handle or a bare handle all store bare, '' or null clears it, and
+ * anything implausible is rejected with 400 "Invalid Instagram handle".
  */
 
 /**

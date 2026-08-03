@@ -1,24 +1,23 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createOrganizer } from '../api/organizers'
+import { ADMIN_ROLES, createAdmin, MIN_ADMIN_PASSWORD, ROLE_LABELS } from '../api/admins'
 import { errorMessage, isConflict } from '../lib/errors'
-import { INSTAGRAM_ERROR, handleForApi, isInvalidHandle, toBareHandle } from '../lib/instagram'
 import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
 import Field from '../components/Field'
+import Select from '../components/Select'
 import Alert from '../components/Alert'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const MIN_PASSWORD = 8 // matches the backend's MIN_PASSWORD_LENGTH
 
-export default function OrganizerCreatePage() {
+export default function AdminCreatePage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
     displayName: '',
     email: '',
     password: '',
-    instagram: '',
+    role: 'business_development',
   })
   const [fieldErrors, setFieldErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -31,14 +30,13 @@ export default function OrganizerCreatePage() {
 
   const validate = () => {
     const errs = {}
-    if (!form.displayName.trim()) errs.displayName = 'Enter the organizer’s business name.'
+    if (!form.displayName.trim()) errs.displayName = 'Enter a name.'
     if (!form.email.trim()) errs.email = 'Enter an email address.'
     else if (!EMAIL_RE.test(form.email.trim())) errs.email = 'Enter a valid email address.'
     if (!form.password) errs.password = 'Set an initial password.'
-    else if (form.password.length < MIN_PASSWORD)
-      errs.password = `Use at least ${MIN_PASSWORD} characters.`
-    // Optional, but if they typed something it has to be a plausible handle.
-    if (isInvalidHandle(form.instagram)) errs.instagram = INSTAGRAM_ERROR
+    else if (form.password.length < MIN_ADMIN_PASSWORD)
+      errs.password = `Use at least ${MIN_ADMIN_PASSWORD} characters.`
+    if (!form.role) errs.role = 'Choose a role.'
     return errs
   }
 
@@ -53,31 +51,31 @@ export default function OrganizerCreatePage() {
 
     setSubmitting(true)
     const email = form.email.trim().toLowerCase()
+    const role = form.role
 
     try {
-      await createOrganizer({
+      await createAdmin({
         email,
         password: form.password,
         displayName: form.displayName.trim(),
-        instagram: handleForApi(form.instagram),
+        role,
       })
 
-      // Drop the password from state the moment it's no longer needed. It is
-      // never logged, never put in the URL, and never carried into the
-      // confirmation — the admin chose it, so we only remind them of that.
-      setForm({ displayName: '', email: '', password: '', instagram: '' })
+      // Clear the password the moment it's no longer needed — it is never
+      // logged, never put in a URL, and never echoed back in the confirmation.
+      setForm({ displayName: '', email: '', password: '', role: 'business_development' })
 
-      navigate('/organizers', {
+      navigate('/admins', {
         replace: true,
         state: {
-          flash: `Organizer created — ${email}. Share the password you set with them; it can't be viewed again, only reset.`,
+          flash: `${ROLE_LABELS[role]} admin created — ${email}. Share the password you set with them; it can't be viewed again, and there's currently no way to reset it from the portal.`,
         },
       })
     } catch (err) {
       if (isConflict(err)) {
-        setFieldErrors({ email: 'An organizer with this email already exists.' })
+        setFieldErrors({ email: 'An admin with this email already exists.' })
       } else {
-        setFormError(errorMessage(err, "Couldn't create the organizer."))
+        setFormError(errorMessage(err, "Couldn't create the admin account."))
       }
       setSubmitting(false)
     }
@@ -85,24 +83,26 @@ export default function OrganizerCreatePage() {
 
   return (
     <>
-      <PageHeader title="Create organizer" description="They'll use these credentials to sign in to the organizer dashboard." />
+      <PageHeader
+        title="Create admin"
+        description="They'll sign in to this portal with these credentials."
+      />
 
       <div className="max-w-lg">
-        <Link to="/organizers" className="text-sm text-gray-500 hover:text-gray-900">
-          ← Back to organizers
+        <Link to="/admins" className="text-sm text-gray-500 hover:text-gray-900">
+          ← Back to admins
         </Link>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-5" noValidate>
           {formError && <Alert tone="error">{formError}</Alert>}
 
           <Field
-            label="Display name"
+            label="Name"
             value={form.displayName}
             onChange={set('displayName')}
             error={fieldErrors.displayName}
-            hint="The business name organizers and attendees will see."
             disabled={submitting}
-            placeholder="Sunburn Events"
+            placeholder="Priya Sharma"
             autoComplete="off"
           />
 
@@ -116,22 +116,9 @@ export default function OrganizerCreatePage() {
             value={form.email}
             onChange={set('email')}
             error={fieldErrors.email}
-            hint="Their login for the organizer dashboard."
+            hint="Their login for this portal. It can't be changed later."
             disabled={submitting}
-            placeholder="bookings@sunburn.in"
-          />
-
-          <Field
-            label="Instagram"
-            value={form.instagram}
-            onChange={set('instagram')}
-            onBlur={(e) => setForm((f) => ({ ...f, instagram: toBareHandle(e.target.value) }))}
-            error={fieldErrors.instagram}
-            hint="Optional. Their own handle, shown on event pages. Paste a link or @handle — it'll be stored bare."
-            disabled={submitting}
-            placeholder="kittysu"
-            autoComplete="off"
-            autoCapitalize="none"
+            placeholder="priya@cirkle.live"
           />
 
           <Field
@@ -141,16 +128,26 @@ export default function OrganizerCreatePage() {
             value={form.password}
             onChange={set('password')}
             error={fieldErrors.password}
-            hint={`At least ${MIN_PASSWORD} characters. You'll need to pass this to them yourself — it can't be retrieved later, only reset.`}
+            hint={`At least ${MIN_ADMIN_PASSWORD} characters. Pass it to them yourself — the portal can't show or reset it afterwards.`}
             disabled={submitting}
             placeholder="••••••••"
           />
 
+          <Select
+            label="Role"
+            value={form.role}
+            onChange={set('role')}
+            error={fieldErrors.role}
+            options={ADMIN_ROLES}
+            hint="Administrative admins can manage admin accounts. Business development admins can do everything else."
+            disabled={submitting}
+          />
+
           <div className="flex gap-3 pt-1">
             <Button type="submit" loading={submitting}>
-              {submitting ? 'Creating…' : 'Create organizer'}
+              {submitting ? 'Creating…' : 'Create admin'}
             </Button>
-            <Button variant="secondary" to="/organizers">
+            <Button variant="secondary" to="/admins">
               Cancel
             </Button>
           </div>

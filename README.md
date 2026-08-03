@@ -17,17 +17,14 @@ npm run dev                  # http://localhost:5175
 `http://localhost:3000` when running the backend locally. It is never hardcoded;
 the app logs loudly to the console if it's missing.
 
-## ⚠️ Backend CORS
+## Backend CORS
 
 The dev server is pinned to **port 5175** (5173 is the consumer app, 5174 the
-organizer dashboard). The backend's CORS allow-list must include
-`http://localhost:5175`, plus this portal's Vercel domain once deployed —
-otherwise every request fails before it leaves the browser and the login screen
-shows "Something went wrong, please try again."
+organizer dashboard). `http://localhost:5175` is on the backend's CORS
+allow-list as of 2026-08-03 — verified end to end in an unflagged browser.
 
-That's a backend change, not a frontend one. As of this writing the allow-list
-in the backend's `src/app.js` contains 5173, 5174 and the consumer Vercel
-domain — **5175 is not yet on it.**
+Still outstanding: **this portal's Vercel domain** needs adding to the same list
+in the backend's `src/app.js` before the deployed build can reach the API.
 
 ## Roles
 
@@ -111,11 +108,37 @@ For events (confirmed against Swagger and live responses on 2026-08-02):
 - **`organizerId` is nullable.** The section spec called the organizer
   required; Swagger explicitly allows creating an event unassigned and linking
   it later, so the dropdown offers "Unassigned" rather than blocking.
+- **The lineup is an upsert by id, not a full replace.** `PUT .../artists`
+  updates an artist in place when its `id` is included, creates one when it's
+  omitted, and deletes any existing artist whose id is absent. Since photos are
+  keyed to the artist id, dropping the id on save recreates the row and orphans
+  its photo — verified. `LineupManager` always sends the ids back.
+- **Artist photos need a saved artist.** The photo endpoints are keyed to the
+  artist id, so a newly added row can't take a photo until the lineup is saved.
+  The UI disables that control and says why.
+- **Instagram handles are normalized server-side** — a URL, an `@handle` or a
+  bare handle all store bare, empty clears, and anything implausible is a 400.
+  `lib/instagram.js` mirrors this client-side so the field visibly settles to
+  the bare handle; the server stays the authority.
 - **The gallery is a full replace, not an append.** `PUT .../gallery` needs an
   `s3Key` and `position` for every photo that should survive, so keeping an
   existing one means echoing its key back. Both `GET /admin/events/:id` and the
   save response carry `s3Key` per item, so `GalleryManager` stages the whole
   set locally and commits it in one call.
+
+For admin accounts (confirmed 2026-08-03):
+
+- **There is no password reset.** `PATCH /admin/admins/:id` reads only
+  `displayName`, `role` and `isActive` — a `password` in the body is ignored,
+  and a body containing only a password returns 400 "No fields to update".
+  The portal says so plainly instead of offering a control that does nothing.
+- **Email can't be changed** after creation; it's only set on POST.
+- **There is no `GET /admin/admins/:id`**, so the edit screen sources its record
+  from the list.
+- **No lockout protection server-side.** The API will happily deactivate the
+  caller's own account or demote the last administrative admin. Those guards
+  live only in [`src/lib/adminGuards.js`](src/lib/adminGuards.js) — don't remove
+  them assuming the backend covers it.
 
 For the oversight endpoints (confirmed 2026-08-03):
 
@@ -139,11 +162,11 @@ a one-file change here rather than a dozen table cells.
 - [x] **2** Organizers — create / list / edit
 - [x] **3** Events — create / list / edit + image upload
 - [x] **4** Oversight — orders, tickets, revenue, invitations, users
-- [ ] **5** Admins — create / manage admin accounts (administrative only)
+- [x] **5** Admins — create / manage admin accounts (administrative only)
 
-Nav items for unbuilt sections render greyed and inert. As each lands, flip
-`built: true` in [`src/nav.js`](src/nav.js) and mount its route in
-[`src/App.jsx`](src/App.jsx).
+All five sections are built. `src/nav.js` still carries the `built` flag, so a
+future section can be added the same way: flip `built: true` and mount its route
+in [`src/App.jsx`](src/App.jsx).
 
 ## Deploy
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getOrganizer, updateOrganizer } from '../api/organizers'
 import { errorMessage, isConflict } from '../lib/errors'
+import { INSTAGRAM_ERROR, handleForApi, isInvalidHandle, toBareHandle } from '../lib/instagram'
 import { formatDate } from '../lib/format'
 import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
@@ -33,7 +34,7 @@ export default function OrganizerDetailPage() {
   const [flash, setFlash] = useState('')
 
   // Details form
-  const [form, setForm] = useState({ displayName: '', email: '' })
+  const [form, setForm] = useState({ displayName: '', email: '', instagram: '' })
   const [fieldErrors, setFieldErrors] = useState({})
   const [savingDetails, setSavingDetails] = useState(false)
   const [detailsError, setDetailsError] = useState('')
@@ -54,7 +55,11 @@ export default function OrganizerDetailPage() {
     try {
       const data = await getOrganizer(id)
       setOrganizer(data)
-      setForm({ displayName: data.displayName, email: data.email })
+      setForm({
+        displayName: data.displayName,
+        email: data.email,
+        instagram: data.instagram ?? '',
+      })
     } catch (err) {
       setLoadError(errorMessage(err, "Couldn't load this organizer."))
     } finally {
@@ -80,6 +85,7 @@ export default function OrganizerDetailPage() {
     if (!form.displayName.trim()) errs.displayName = 'Display name can’t be empty.'
     if (!form.email.trim()) errs.email = 'Email can’t be empty.'
     else if (!EMAIL_RE.test(form.email.trim())) errs.email = 'Enter a valid email address.'
+    if (isInvalidHandle(form.instagram)) errs.instagram = INSTAGRAM_ERROR
     setFieldErrors(errs)
     setDetailsError('')
     if (Object.keys(errs).length > 0) return
@@ -91,6 +97,11 @@ export default function OrganizerDetailPage() {
     }
     if (form.email.trim().toLowerCase() !== organizer.email) {
       payload.email = form.email.trim().toLowerCase()
+    }
+    // Compare normalised, so retyping the same handle with an @ isn't a change.
+    // handleForApi returns null for empty, which is how the API clears it.
+    if (handleForApi(form.instagram) !== (organizer.instagram ?? null)) {
+      payload.instagram = handleForApi(form.instagram)
     }
     if (Object.keys(payload).length === 0) {
       setFlash('No changes to save.')
@@ -246,6 +257,23 @@ export default function OrganizerDetailPage() {
               error={fieldErrors.email}
               hint="Changing this changes the email they sign in with."
               disabled={savingDetails}
+            />
+
+            <Field
+              label="Instagram"
+              value={form.instagram}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, instagram: e.target.value }))
+                setFieldErrors((errs) => ({ ...errs, instagram: '' }))
+                setFlash('')
+              }}
+              onBlur={(e) => setForm((f) => ({ ...f, instagram: toBareHandle(e.target.value) }))}
+              error={fieldErrors.instagram}
+              hint="Optional. Shown on their event pages. Clear it to remove the link."
+              disabled={savingDetails}
+              placeholder="kittysu"
+              autoComplete="off"
+              autoCapitalize="none"
             />
 
             <Button type="submit" loading={savingDetails}>

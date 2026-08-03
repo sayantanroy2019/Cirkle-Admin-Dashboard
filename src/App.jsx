@@ -18,6 +18,8 @@ import InvitationsPage from './pages/InvitationsPage'
 import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
 import AdminsPage from './pages/AdminsPage'
+import AdminCreatePage from './pages/AdminCreatePage'
+import AdminEditPage from './pages/AdminEditPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { LANDING_PATH } from './nav'
 
@@ -54,6 +56,9 @@ export default function App() {
                 who types the URL still gets the sidebar around the refusal. */}
             <Route element={<RoleRoute />}>
               <Route path="/admins" element={<AdminsPage />} />
+              {/* /new before /:id so it isn't swallowed as an admin id. */}
+              <Route path="/admins/new" element={<AdminCreatePage />} />
+              <Route path="/admins/:id" element={<AdminEditPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

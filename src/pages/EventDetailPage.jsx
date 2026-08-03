@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getEvent, updateEvent } from '../api/events'
+import { listArtists } from '../api/artists'
 import useEventOptions from '../hooks/useEventOptions'
 import { errorMessage } from '../lib/errors'
 import { EVENT_TYPE_LABELS, formatDateTime, isPast } from '../lib/format'
@@ -11,6 +12,7 @@ import Alert from '../components/Alert'
 import EventFields from '../components/EventFields'
 import BannerUploader from '../components/BannerUploader'
 import GalleryManager from '../components/GalleryManager'
+import LineupManager from '../components/LineupManager'
 import Spinner from '../components/Spinner'
 
 function Card({ title, description, children }) {
@@ -31,6 +33,8 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState(null)
   const [form, setForm] = useState(null)
+  // The lineup lives on its own endpoint, not on the event payload.
+  const [artists, setArtists] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
@@ -49,9 +53,10 @@ export default function EventDetailPage() {
     setLoading(true)
     setLoadError('')
     try {
-      const data = await getEvent(id)
+      const [data, lineup] = await Promise.all([getEvent(id), listArtists(id)])
       setEvent(data)
       setForm(eventToForm(data))
+      setArtists(lineup)
     } catch (err) {
       setLoadError(errorMessage(err, "Couldn't load this event."))
     } finally {
@@ -218,6 +223,13 @@ export default function EventDetailPage() {
               setFlash('Banner updated.')
             }}
           />
+        </Card>
+
+        <Card
+          title="Lineup"
+          description="Up to 10 artists, in order — the first is the headliner. Names, handles and order save together; photos save as soon as you pick them."
+        >
+          <LineupManager eventId={id} artists={artists} onChange={setArtists} />
         </Card>
 
         <Card
