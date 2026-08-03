@@ -1,16 +1,20 @@
 import Field from './Field'
 import Select from './Select'
 import Textarea from './Textarea'
-import { EVENT_TYPE_OPTIONS } from '../lib/eventForm'
+import Checkbox from './Checkbox'
+import { EVENT_TYPE_OPTIONS, SOCIAL_REQUIREMENTS } from '../lib/eventForm'
 
 /**
  * The event field set, shared by create and edit so the two can't diverge.
  *
  * `setField('name')(e)` updates one key; the parent owns the state.
+ * `setChecked('requireInstagram')(e)` does the same for the boolean flags,
+ * which read `e.target.checked` rather than `e.target.value`.
  */
 export default function EventFields({
   form,
   setField,
+  setChecked,
   errors = {},
   options,
   disabled = false,
@@ -168,6 +172,27 @@ export default function EventFields({
         disabled={disabled}
         placeholder="An unforgettable evening…"
       />
+
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-700">
+          Required social handles
+        </legend>
+        <p className="mt-1 text-xs text-gray-500">
+          Attendees must have these handles on their profile before they can buy
+          a ticket or request an invitation.
+        </p>
+        <div className="mt-3 space-y-2.5">
+          {SOCIAL_REQUIREMENTS.map(({ key, label }) => (
+            <Checkbox
+              key={key}
+              label={label}
+              checked={form[key]}
+              onChange={setChecked(key)}
+              disabled={disabled}
+            />
+          ))}
+        </div>
+      </fieldset>
     </div>
   )
 }

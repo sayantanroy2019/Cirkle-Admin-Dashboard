@@ -4,9 +4,10 @@ import { isoToLocalInput, localInputToIso, paiseToRupeeInput, rupeeInputToPaise 
  * Shared shape, validation and payload-building for the event form, so create
  * and edit can't drift apart.
  *
- * Form state is all strings (what inputs give us). Conversion to API types —
- * rupees→paise, local datetime→ISO, ""→null — happens only in the two payload
- * builders at the bottom.
+ * Form state is all strings (what inputs give us), except the three social
+ * requirement flags, which are booleans because they come from checkboxes.
+ * Conversion to API types — rupees→paise, local datetime→ISO, ""→null —
+ * happens only in the two payload builders at the bottom.
  *
  * Rules mirror the backend's validateEventFields:
  *   name, categoryId, cityId, startsAt, price, targetGroupSize are required on
@@ -14,6 +15,18 @@ import { isoToLocalInput, localInputToIso, paiseToRupeeInput, rupeeInputToPaise 
  *   targetGroupSize must be > 0; price >= 0; startsAt must be in the future,
  *   but only when it's actually being sent.
  */
+
+/**
+ * Attendees must have these handles on their profile before they can buy or
+ * request an invitation. Not retroactive — the backend evaluates them at
+ * purchase time, so turning one on never invalidates tickets already sold.
+ */
+export const SOCIAL_REQUIREMENTS = [
+  { key: 'requireFacebook', label: 'Require Facebook' },
+  { key: 'requireInstagram', label: 'Require Instagram' },
+  // Note the API spells this with a lowercase "i" — requireLinkedin.
+  { key: 'requireLinkedin', label: 'Require LinkedIn' },
+]
 
 export const EVENT_TYPE_OPTIONS = [
   { id: 'open', label: 'Open — anyone can book' },
@@ -34,6 +47,9 @@ export const emptyEventForm = () => ({
   venueName: '',
   venueAddress: '',
   description: '',
+  requireFacebook: false,
+  requireInstagram: false,
+  requireLinkedin: false,
 })
 
 /** An API event → form strings. Nulls become '' so inputs stay controlled. */
@@ -54,6 +70,9 @@ export const eventToForm = (event) => ({
   venueName: event.venueName ?? '',
   venueAddress: event.venueAddress ?? '',
   description: event.description ?? '',
+  requireFacebook: Boolean(event.requireFacebook),
+  requireInstagram: Boolean(event.requireInstagram),
+  requireLinkedin: Boolean(event.requireLinkedin),
 })
 
 const parsePositiveInt = (value) => {
@@ -139,6 +158,9 @@ export const formToCreatePayload = (form) => ({
   description: form.description.trim() || null,
   // Swagger allows null — an event can be created unassigned and linked later.
   organizerId: form.organizerId || null,
+  requireFacebook: Boolean(form.requireFacebook),
+  requireInstagram: Boolean(form.requireInstagram),
+  requireLinkedin: Boolean(form.requireLinkedin),
 })
 
 /**

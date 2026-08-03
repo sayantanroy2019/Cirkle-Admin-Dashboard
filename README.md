@@ -108,6 +108,11 @@ For events (confirmed against Swagger and live responses on 2026-08-02):
 - **`organizerId` is nullable.** The section spec called the organizer
   required; Swagger explicitly allows creating an event unassigned and linking
   it later, so the dropdown offers "Unassigned" rather than blocking.
+- **The three social requirement flags** (`requireFacebook`, `requireInstagram`,
+  `requireLinkedin` — note the lowercase "i") ride along with the normal event
+  create/edit payload. Booleans, default false, and not retroactive: the backend
+  evaluates them at purchase time, so switching one on never invalidates tickets
+  already sold.
 - **The lineup is an upsert by id, not a full replace.** `PUT .../artists`
   updates an artist in place when its `id` is included, creates one when it's
   omitted, and deletes any existing artist whose id is absent. Since photos are

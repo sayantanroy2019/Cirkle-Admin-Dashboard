@@ -81,6 +81,13 @@ export default function EventDetailPage() {
     setFlash('')
   }
 
+  /** Checkboxes carry their state on `checked`, not `value`. */
+  const setChecked = (key) => (e) => {
+    const { checked } = e.target
+    setForm((f) => ({ ...f, [key]: checked }))
+    setFlash('')
+  }
+
   const handleSave = async (submitEvent) => {
     submitEvent.preventDefault()
     if (saving) return
@@ -198,6 +205,7 @@ export default function EventDetailPage() {
               <EventFields
                 form={form}
                 setField={setField}
+                setChecked={setChecked}
                 errors={errors}
                 options={options}
                 disabled={saving}

@@ -29,6 +29,12 @@ export default function EventCreatePage() {
     setErrors((errs) => ({ ...errs, [key]: '' }))
   }
 
+  /** Checkboxes carry their state on `checked`, not `value`. */
+  const setChecked = (key) => (e) => {
+    const { checked } = e.target
+    setForm((f) => ({ ...f, [key]: checked }))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (submitting) return
@@ -90,6 +96,7 @@ export default function EventCreatePage() {
           <EventFields
             form={form}
             setField={setField}
+            setChecked={setChecked}
             errors={errors}
             options={options}
             disabled={submitting}
