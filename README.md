@@ -78,6 +78,50 @@ src/
   pages/                LoginPage, Organizer{s,Create,Detail}Page, AdminsPage, …
 ```
 
+## Image pipeline (banner + gallery)
+
+Ported from the consumer app so both products normalize images the same way.
+Every stored image is WebP at a known aspect ratio, because nothing else can
+get through:
+
+```
+pick → decodeForCrop()   HEIC → JPEG; JPEG/PNG/WebP pass through
+     → PhotoCropper      pan/zoom behind a frame locked to the ratio
+     → getCroppedWebp()  crop region → canvas → WebP, capped, never upscaled
+     → upload            presign → PUT straight to S3 → hold the key
+     → save              attach the key(s) via the admin endpoint
+```
+
+|          | aspect | count | max long edge | quality |
+|----------|--------|-------|---------------|---------|
+| Banner   | 16:9   | 1     | 1920          | 0.8     |
+| Gallery  | 1:1    | ≤ 5   | 1080          | 0.8     |
+
+Things in here that look redundant and aren't:
+
+- **HEIC is decoded before cropping.** Browsers can't draw HEIC to a canvas —
+  both the crop surface and the export fail on a raw file.
+- **HEIC detection is a three-step fallback, not an extension check.** iOS often
+  transcodes HEIC→JPEG on selection while keeping the `.heic` name; trusting the
+  name would re-convert an already-JPEG file and corrupt it. Explicit HEIC MIME
+  wins, then a known-good image MIME, then the extension.
+- **`heic2any` is a dynamic `import()`.** It's ~1.35MB — a static import would
+  put it in the main bundle for every admin page load. Verified: it builds to
+  its own chunk and is only fetched when a HEIC is actually picked.
+- **`accept` includes HEIC** even though the API never signs it, or iPhone users
+  can't select their own photos. The WebP export is what makes them uploadable.
+- **The "preparing" guard in `useCropQueue` is a ref, not state.** Flipping state
+  re-runs the effect and orphans the in-flight decode — a spinner that never
+  ends.
+- **Uploads run on crop-confirm; keys are attached on save.** Save is blocked
+  while any slot is uploading or errored, so the gallery's all-or-nothing
+  rejection is never reachable from the UI.
+- **Retry reuses the cropped file** — a failed upload must not send the admin
+  back through the crop tool.
+
+Artist photos still use the older direct-upload path; their ratio needs
+deciding before they move onto this pipeline.
+
 ## Where the API differs from the written spec
 
 Confirmed against the live backend on 2026-08-01. The organizer endpoints

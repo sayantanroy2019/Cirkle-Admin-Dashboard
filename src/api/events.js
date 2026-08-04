@@ -104,12 +104,23 @@ export const setGallery = async (eventId, photos) => {
   return data.gallery ?? []
 }
 
-/** Convenience: the full per-image handshake, returning the S3 key. */
+/**
+ * The full per-image handshake: presign → PUT bytes → return the key plus a
+ * local preview URL.
+ *
+ * `file` is always the WebP the crop step produced, so `contentType` is
+ * image/webp — which is what gets signed and what the PUT must send. The
+ * backend never signs HEIC; the crop export is precisely what makes HEIC
+ * uploads possible.
+ *
+ * The key is held on the slot and only attached (banner PATCH / gallery PUT)
+ * when the admin saves.
+ */
 export const uploadEventImage = async (eventId, file, kind, onProgress) => {
   const { uploadUrl, key } = await getImageUploadUrl(eventId, {
     contentType: file.type,
     kind,
   })
   await uploadToS3(uploadUrl, file, onProgress)
-  return key
+  return { key, previewUrl: URL.createObjectURL(file) }
 }
