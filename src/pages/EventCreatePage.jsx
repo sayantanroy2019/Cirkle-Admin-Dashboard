@@ -53,7 +53,7 @@ export default function EventCreatePage() {
       // on the edit screen where the banner and gallery live.
       navigate(`/events/${created.id}`, {
         replace: true,
-        state: { flash: 'Event created. Add a banner and gallery images below.' },
+        state: { flash: 'Event created. Set up its ticket categories and images below.' },
       })
     } catch (err) {
       setFormError(errorMessage(err, "Couldn't create the event."))
@@ -74,7 +74,7 @@ export default function EventCreatePage() {
     <>
       <PageHeader
         title="Create event"
-        description="Images are added on the next screen, once the event has an id."
+        description="Ticketing and images are set up on the next screen, once the event has an id."
       />
 
       <div className="max-w-2xl">

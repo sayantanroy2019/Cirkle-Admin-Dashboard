@@ -13,6 +13,7 @@ import EventFields from '../components/EventFields'
 import BannerUploader from '../components/BannerUploader'
 import GalleryManager from '../components/GalleryManager'
 import LineupManager from '../components/LineupManager'
+import TicketCategories from '../components/TicketCategories'
 import Spinner from '../components/Spinner'
 
 function Card({ title, description, children }) {
@@ -209,7 +210,6 @@ export default function EventDetailPage() {
                 errors={errors}
                 options={options}
                 disabled={saving}
-                showPriceNote
               />
 
               <Button type="submit" loading={saving}>
@@ -230,6 +230,18 @@ export default function EventDetailPage() {
               setEvent((prev) => ({ ...prev, bannerUrl }))
               setFlash('Banner updated.')
             }}
+          />
+        </Card>
+
+        <Card
+          title="Ticket categories"
+          description="What a ticket costs here, how many people one admits, and how many exist. Total capacity is derived — there's nothing to type for it."
+        >
+          <TicketCategories
+            eventId={id}
+            categories={event.categories}
+            capacitySummary={event.capacitySummary}
+            onChange={applyUpdate}
           />
         </Card>
 

@@ -189,6 +189,30 @@ For admin accounts (confirmed 2026-08-03):
   live only in [`src/lib/adminGuards.js`](src/lib/adminGuards.js) — don't remove
   them assuming the backend covers it.
 
+For ticket categories (confirmed 2026-08-06):
+
+- **The event's `price` and `capacity` are vestigial.** Price is per category
+  now, capacity is derived from `admitsCount × ticketQuantity`. The form no
+  longer collects or sends either — the backend defaults price to 0 and leaves
+  capacity null. The events *list* lost its Price column for the same reason:
+  that endpoint returns neither `categories` nor `capacitySummary`, so there was
+  nothing honest to show. Open an event to see its tiers.
+- **`PATCH { categories }` replaces the whole set.** Omit the key to leave
+  ticketing untouched; send `[]` to clear it. A PATCH carrying *only*
+  `categories` is valid and does **not** return "No fields to update".
+- **`ticketQuantity` has three distinct states** — `null` unlimited, `0` exists
+  but nothing to sell, `N > 0` capped. `null` and `0` are opposites; the UI
+  never conflates them.
+- **Capacity is derived identically on both sides.** `src/lib/capacity.js`
+  mirrors the backend rule so the live preview never jumps on save:
+  `peopleCapacity = admits × quantity` (null when unlimited); totals sum the
+  finite tiers only and set `hasUnlimited` instead of trying to add infinity.
+  Parity is verified against the real backend across capped / zero / unlimited
+  / mixed / single / empty.
+- **Catalogue names are case-insensitively unique** and normalized on write
+  (`'  Couple   Pass '` → `'Couple Pass'`). A 409 on inline create means the
+  name exists — the UI selects the existing one rather than erroring.
+
 For the oversight endpoints (confirmed 2026-08-03):
 
 Unlike the organizer/event endpoints, these **are** properly paginated:

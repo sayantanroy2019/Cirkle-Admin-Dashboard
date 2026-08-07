@@ -18,7 +18,6 @@ export default function EventFields({
   errors = {},
   options,
   disabled = false,
-  showPriceNote = false,
 }) {
   return (
     <div className="space-y-5">
@@ -81,39 +80,6 @@ export default function EventFields({
           error={errors.endsAt}
           hint="Optional."
           disabled={disabled}
-        />
-      </div>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field
-          label="Ticket price (₹)"
-          type="number"
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          value={form.price}
-          onChange={setField('price')}
-          error={errors.price}
-          hint={
-            showPriceNote
-              ? 'Affects future bookings only — tickets already sold keep the price they were bought at.'
-              : 'In rupees. Enter 0 for a free event.'
-          }
-          disabled={disabled}
-          placeholder="500"
-        />
-        <Field
-          label="Capacity"
-          type="number"
-          min="1"
-          step="1"
-          inputMode="numeric"
-          value={form.capacity}
-          onChange={setField('capacity')}
-          error={errors.capacity}
-          hint="Leave blank for uncapped."
-          disabled={disabled}
-          placeholder="Uncapped"
         />
       </div>
 

@@ -1,4 +1,4 @@
-import { isoToLocalInput, localInputToIso, paiseToRupeeInput, rupeeInputToPaise } from './format'
+import { isoToLocalInput, localInputToIso } from './format'
 
 /**
  * Shared shape, validation and payload-building for the event form, so create
@@ -10,10 +10,14 @@ import { isoToLocalInput, localInputToIso, paiseToRupeeInput, rupeeInputToPaise 
  * happens only in the two payload builders at the bottom.
  *
  * Rules mirror the backend's validateEventFields:
- *   name, categoryId, cityId, startsAt, price, targetGroupSize are required on
- *   create; price/capacity/targetGroupSize are integers; capacity and
- *   targetGroupSize must be > 0; price >= 0; startsAt must be in the future,
- *   but only when it's actually being sent.
+ *   name, categoryId, cityId, startsAt and targetGroupSize are required on
+ *   create; targetGroupSize must be a whole number > 0; startsAt must be in
+ *   the future, but only when it's actually being sent.
+ *
+ * NOTE: the event's top-level `price` and `capacity` are vestigial as of ticket
+ * categories. Price now lives per category and capacity is derived from
+ * admitsCount × ticketQuantity, so this form no longer collects or sends
+ * either — the backend defaults price to 0 and leaves capacity null.
  */
 
 /**
@@ -40,8 +44,6 @@ export const emptyEventForm = () => ({
   cityId: '',
   startsAt: '',
   endsAt: '',
-  price: '',
-  capacity: '',
   targetGroupSize: '',
   eventType: 'open',
   venueName: '',
@@ -60,8 +62,6 @@ export const eventToForm = (event) => ({
   cityId: event.cityId ?? '',
   startsAt: isoToLocalInput(event.startsAt),
   endsAt: isoToLocalInput(event.endsAt),
-  price: paiseToRupeeInput(event.price),
-  capacity: event.capacity === null || event.capacity === undefined ? '' : String(event.capacity),
   targetGroupSize:
     event.targetGroupSize === null || event.targetGroupSize === undefined
       ? ''
@@ -120,23 +120,11 @@ export const validateEventForm = (form, { requireAll, enforceFutureStart }) => {
     }
   }
 
-  if (requireAll && !String(form.price).trim()) {
-    errors.price = 'Enter a ticket price.'
-  } else if (String(form.price).trim()) {
-    const paise = rupeeInputToPaise(form.price)
-    if (paise === null) errors.price = 'Enter a valid amount in rupees.'
-  }
-
   if (requireAll && !String(form.targetGroupSize).trim()) {
     errors.targetGroupSize = 'Enter a target group size.'
   } else if (String(form.targetGroupSize).trim()) {
     const n = parsePositiveInt(form.targetGroupSize)
     if (Number.isNaN(n)) errors.targetGroupSize = 'Enter a whole number above zero.'
-  }
-
-  if (String(form.capacity).trim()) {
-    const n = parsePositiveInt(form.capacity)
-    if (Number.isNaN(n)) errors.capacity = 'Enter a whole number above zero, or leave blank for uncapped.'
   }
 
   return errors
@@ -149,8 +137,6 @@ export const formToCreatePayload = (form) => ({
   cityId: form.cityId,
   startsAt: localInputToIso(form.startsAt),
   endsAt: form.endsAt ? localInputToIso(form.endsAt) : null,
-  price: rupeeInputToPaise(form.price),
-  capacity: String(form.capacity).trim() ? Number(form.capacity) : null,
   targetGroupSize: Number(form.targetGroupSize),
   eventType: form.eventType,
   venueName: form.venueName.trim() || null,

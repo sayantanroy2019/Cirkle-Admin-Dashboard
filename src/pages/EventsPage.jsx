@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { listEvents } from '../api/events'
 import useEventOptions from '../hooks/useEventOptions'
 import { errorMessage } from '../lib/errors'
-import { EVENT_TYPE_LABELS, formatDateTime, formatPaise, isPast } from '../lib/format'
+import { EVENT_TYPE_LABELS, formatDateTime, isPast } from '../lib/format'
 import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
@@ -11,7 +11,11 @@ import Select from '../components/Select'
 import Badge from '../components/Badge'
 import Spinner from '../components/Spinner'
 
-const COLUMNS = ['Event', 'Organizer', 'Category', 'City', 'Starts', 'Price', 'Type', 'Status']
+// No Price column: the event's top-level price is vestigial now that ticketing
+// is per-category, and this list endpoint returns neither `categories` nor
+// `capacitySummary` — so there's nothing honest to show here. Open an event to
+// see its tiers.
+const COLUMNS = ['Event', 'Organizer', 'Category', 'City', 'Starts', 'Type', 'Status']
 
 const STATUS_OPTIONS = [
   { id: 'upcoming', label: 'Upcoming' },
@@ -190,9 +194,6 @@ export default function EventsPage() {
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
                           {formatDateTime(e.startsAt)}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
-                          {formatPaise(e.price)}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <Badge tone={e.eventType === 'invite_only' ? 'purple' : 'gray'}>
