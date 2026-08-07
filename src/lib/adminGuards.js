@@ -1,14 +1,18 @@
 /**
  * Lockout guards for admin account management.
  *
- * The backend does NOT enforce any of this — `PATCH /admin/admins/:id` will
- * happily deactivate the account making the request, or demote the only
- * administrative admin, leaving nobody able to manage admins again. Verified
- * against the route source on 2026-08-03: there are no self-edit checks.
+ * As of 2026-08-08 the backend enforces these rules too, returning 409 with a
+ * machine code (`cannot_deactivate_self`, `last_administrative_admin`) and
+ * counting the administrative population under a row lock, so two admins
+ * demoting each other simultaneously cannot both slip through.
  *
- * So these are the only thing standing between an admin and locking themselves
- * (or everyone) out. Each returns a human reason string when the action must be
- * blocked, or null when it's allowed.
+ * These client-side guards remain the first line: they disable the control and
+ * explain why, rather than letting an admin submit something that will bounce.
+ * The 409 handling in AdminEditPage is the fallback for whatever reaches the
+ * server anyway — races, or a gap these guards don't cover.
+ *
+ * Each returns a human reason string when the action must be blocked, or null
+ * when it's allowed.
  */
 
 const activeAdministrativeCount = (admins) =>

@@ -11,17 +11,20 @@ import api from './client'
  * enveloped (`{ admins }` / `{ admin }`), there is no pagination, and an admin
  * reads: { id, email, displayName, role, isActive, createdAt }.
  *
- * Two capability gaps worth knowing, both confirmed in the implementation:
+ * PATCH accepts displayName, role, isActive and `password`. A body containing
+ * only `password` is valid — it does not come back "No fields to update".
+ * Email is not editable; it's only set at creation.
  *
- *  1. There is no `GET /admin/admins/:id`. The edit screen sources its record
- *     from the list.
- *  2. PATCH accepts only displayName, role and isActive. It does NOT accept
- *     `password` — the handler never reads it, so sending one is silently
- *     ignored (and a body containing only a password comes back 400 "No fields
- *     to update"). There is therefore no way to reset an admin's password
- *     through the API, and the UI must not pretend otherwise.
+ * Lockout protection is enforced server-side and returns 409 with a machine
+ * code in `error` and prose in `message` (see lib/errors.js — this is the one
+ * endpoint where `error` is a code rather than the human text):
  *
- * Email is not editable either — only set at creation.
+ *   cannot_deactivate_self      — nobody may deactivate their own account
+ *   last_administrative_admin   — active administrative admins may never hit 0
+ *   concurrent_admin_change     — a competing change collided; retry
+ *
+ * A password reset changes no counts, so the lockout rules never block it —
+ * resetting your own password is always allowed.
  */
 
 export const ADMIN_ROLES = [
@@ -49,9 +52,9 @@ export const createAdmin = async (payload) => {
 }
 
 /**
- * Partial update — only { displayName, role, isActive } are supported.
- * An empty body is a 400, so callers send only what changed and short-circuit
- * when nothing did.
+ * Partial update — { displayName, role, isActive, password }, any subset.
+ * A completely empty body is still a 400, so callers send only what changed and
+ * short-circuit when nothing did; a password-only body is fine.
  */
 export const updateAdmin = async (id, payload) => {
   const { data } = await api.patch(`/admin/admins/${id}`, payload)

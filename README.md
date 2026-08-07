@@ -177,17 +177,17 @@ For events (confirmed against Swagger and live responses on 2026-08-02):
 
 For admin accounts (confirmed 2026-08-03):
 
-- **There is no password reset.** `PATCH /admin/admins/:id` reads only
-  `displayName`, `role` and `isActive` — a `password` in the body is ignored,
-  and a body containing only a password returns 400 "No fields to update".
-  The portal says so plainly instead of offering a control that does nothing.
+- **Password reset works** — `PATCH /admin/admins/:id` accepts `password`,
+  alone or with other fields. A password-only body is valid and does not return
+  "No fields to update". Resetting your own password is always allowed.
 - **Email can't be changed** after creation; it's only set on POST.
-- **There is no `GET /admin/admins/:id`**, so the edit screen sources its record
-  from the list.
-- **No lockout protection server-side.** The API will happily deactivate the
-  caller's own account or demote the last administrative admin. Those guards
-  live only in [`src/lib/adminGuards.js`](src/lib/adminGuards.js) — don't remove
-  them assuming the backend covers it.
+- **Lockout protection is enforced server-side**, returning 409 with a machine
+  code in `error` and prose in `message`: `cannot_deactivate_self`,
+  `last_administrative_admin`, `concurrent_admin_change`. This is the **one
+  endpoint where `error` is a code rather than human text** — `errorMessage()`
+  prefers `message` for exactly this reason, or an admin would see a raw enum.
+  The client guards in [`src/lib/adminGuards.js`](src/lib/adminGuards.js) stay
+  as the first line; the 409 handling is the fallback.
 
 For ticket categories (confirmed 2026-08-06):
 

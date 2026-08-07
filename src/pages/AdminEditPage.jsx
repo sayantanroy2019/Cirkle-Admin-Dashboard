@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ADMIN_ROLES, listAdmins, ROLE_LABELS, updateAdmin } from '../api/admins'
+import { ADMIN_ROLES, MIN_ADMIN_PASSWORD, listAdmins, ROLE_LABELS, updateAdmin } from '../api/admins'
 import { useAuthStore } from '../store/authStore'
 import { errorMessage } from '../lib/errors'
 import { formatDate } from '../lib/format'
@@ -29,7 +29,9 @@ export default function AdminEditPage() {
   const setSession = useAuthStore((s) => s.login)
   const token = useAuthStore((s) => s.token)
 
-  // There is no GET /admin/admins/:id, so the row comes from the list.
+  // `GET /admin/admins/:id` exists now, but the lockout guards need to count
+  // active administrative admins, so the list is fetched anyway and the row
+  // comes from it — one request rather than two.
   const [admins, setAdmins] = useState([])
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -40,6 +42,11 @@ export default function AdminEditPage() {
   const [fieldErrors, setFieldErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  // Password reset — same shape as the organizer reset on OrganizerDetailPage.
+  const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
 
   const [confirmingStatus, setConfirmingStatus] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
@@ -120,6 +127,33 @@ export default function AdminEditPage() {
       setSaveError(errorMessage(err, "Couldn't save those changes."))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleResetPassword = async (event) => {
+    event.preventDefault()
+    if (savingPassword) return
+
+    if (password.length < MIN_ADMIN_PASSWORD) {
+      setPasswordError(`Use at least ${MIN_ADMIN_PASSWORD} characters.`)
+      return
+    }
+    setPasswordError('')
+    setSavingPassword(true)
+
+    try {
+      // A body containing only `password` is valid — it no longer 400s with
+      // "No fields to update". A reset changes no counts, so the lockout rules
+      // never block it; resetting your own password is always allowed.
+      applyUpdate(await updateAdmin(id, { password }))
+      // Cleared immediately — never logged, never in the URL, never echoed
+      // back in the confirmation.
+      setPassword('')
+      setFlash('Password reset. Share the new password with the admin.')
+    } catch (err) {
+      setPasswordError(errorMessage(err, "Couldn't reset the password."))
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -249,14 +283,34 @@ export default function AdminEditPage() {
         </Card>
 
         <Card
-          title="Password"
-          description="Set when the account was created, and shared out of band."
+          title="Reset password"
+          description="Sets a new password for this admin. You'll need to pass it to them yourself — existing passwords can't be viewed."
         >
-          <p className="text-sm text-gray-500">
-            The API has no way to change an admin's password, so the portal can't
-            offer a reset. If someone is locked out, create them a new account
-            and deactivate the old one.
-          </p>
+          <form onSubmit={handleResetPassword} className="space-y-4" noValidate>
+            <Field
+              label="New password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setPasswordError('')
+                setFlash('')
+              }}
+              error={passwordError}
+              hint={`At least ${MIN_ADMIN_PASSWORD} characters.`}
+              disabled={savingPassword}
+              placeholder="••••••••"
+            />
+            <Button
+              type="submit"
+              variant="secondary"
+              loading={savingPassword}
+              disabled={!password}
+            >
+              {savingPassword ? 'Resetting…' : 'Reset password'}
+            </Button>
+          </form>
         </Card>
 
         <Card
