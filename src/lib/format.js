@@ -19,6 +19,15 @@ export const formatDate = (iso) => {
   return Number.isNaN(d.getTime()) ? '—' : DATE_FMT.format(d)
 }
 
+const TIME_FMT = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' })
+
+/** Just the clock part — for tables that stack the date above the time. */
+export const formatTime = (iso) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : TIME_FMT.format(d)
+}
+
 export const formatDateTime = (iso) => {
   if (!iso) return '—'
   const d = new Date(iso)

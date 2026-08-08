@@ -194,9 +194,13 @@ For ticket categories (confirmed 2026-08-06):
 - **The event's `price` and `capacity` are vestigial.** Price is per category
   now, capacity is derived from `admitsCount × ticketQuantity`. The form no
   longer collects or sends either — the backend defaults price to 0 and leaves
-  capacity null. The events *list* lost its Price column for the same reason:
-  that endpoint returns neither `categories` nor `capacitySummary`, so there was
-  nothing honest to show. Open an event to see its tiers.
+  capacity null.
+- **The events list shows `priceRange` and `capacitySummary`** per row (added
+  server-side after the categories rework). `priceRange: null` is the
+  authoritative "no categories yet" signal — deliberately distinct from a real
+  ₹0 or a 0-inventory tier, both of which still return a range. `hasUnlimited`
+  renders as "Unlimited" rather than a finite subtotal that would understate
+  the event.
 - **`PATCH { categories }` replaces the whole set.** Omit the key to leave
   ticketing untouched; send `[]` to clear it. A PATCH carrying *only*
   `categories` is valid and does **not** return "No fields to update".

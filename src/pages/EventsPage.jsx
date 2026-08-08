@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { listEvents } from '../api/events'
 import useEventOptions from '../hooks/useEventOptions'
 import { errorMessage } from '../lib/errors'
-import { EVENT_TYPE_LABELS, formatDateTime, isPast } from '../lib/format'
+import { EVENT_TYPE_LABELS, formatDate, formatTime, isPast } from '../lib/format'
+import { describeCapacityCell, describePriceRange } from '../lib/capacity'
 import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
@@ -11,11 +12,15 @@ import Select from '../components/Select'
 import Badge from '../components/Badge'
 import Spinner from '../components/Spinner'
 
-// No Price column: the event's top-level price is vestigial now that ticketing
-// is per-category, and this list endpoint returns neither `categories` nor
-// `capacitySummary` — so there's nothing honest to show here. Open an event to
-// see its tiers.
-const COLUMNS = ['Event', 'Organizer', 'Category', 'City', 'Starts', 'Type', 'Status']
+// Price and Capacity come from the per-event `priceRange` / `capacitySummary`
+// the list endpoint now derives from the ticket categories — the same
+// derivation the detail view uses, so the two can't disagree.
+const COLUMNS = [
+  'Event', 'Organizer', 'Category', 'City', 'Starts', 'Price', 'Capacity', 'Type', 'Status',
+]
+
+/** Shown wherever an event has no ticket categories configured yet. */
+const NoCategories = () => <span className="text-gray-400">No categories</span>
 
 const STATUS_OPTIONS = [
   { id: 'upcoming', label: 'Upcoming' },
@@ -180,8 +185,10 @@ export default function EventsPage() {
                             {e.name}
                           </button>
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
-                          {e.organizerName ?? (
+                        <td className="max-w-[11rem] truncate px-4 py-3.5 text-gray-600">
+                          {e.organizerName ? (
+                            <span title={e.organizerName}>{e.organizerName}</span>
+                          ) : (
                             <span className="text-gray-400">Unassigned</span>
                           )}
                         </td>
@@ -193,7 +200,27 @@ export default function EventsPage() {
                           {options.cities.find((c) => c.id === e.cityId)?.label ?? e.cityId}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
-                          {formatDateTime(e.startsAt)}
+                          {formatDate(e.startsAt)}
+                          <span className="block text-xs text-gray-500">
+                            {formatTime(e.startsAt)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-gray-600 tabular-nums">
+                          {describePriceRange(e.priceRange) ?? <NoCategories />}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
+                          {(() => {
+                            const cap = describeCapacityCell(e.capacitySummary, e.priceRange)
+                            if (!cap) return <NoCategories />
+                            return (
+                              <span className="tabular-nums">
+                                {cap.people}
+                                {cap.tickets && (
+                                  <span className="block text-xs text-gray-500">{cap.tickets}</span>
+                                )}
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <Badge tone={e.eventType === 'invite_only' ? 'purple' : 'gray'}>

@@ -156,6 +156,39 @@ export const describeTotal = (summary) => {
   return { headline: `${tickets} · ${people}`, detail: null }
 }
 
+/**
+ * List-row display for `priceRange`.
+ *
+ * Returns null when the event has no categories — `priceRange: null` is the
+ * authoritative "not configured yet" signal, and is deliberately distinct from
+ * a real ₹0 or a sold-out tier. Callers render their own no-categories
+ * affordance for null rather than a misleading number.
+ */
+export const describePriceRange = (priceRange) => {
+  if (!priceRange) return null
+  const { minPaise, maxPaise } = priceRange
+  if (minPaise === null || minPaise === undefined) return null
+  return minPaise === maxPaise
+    ? formatPaise(minPaise)
+    : `${formatPaise(minPaise)} – ${formatPaise(maxPaise)}`
+}
+
+/**
+ * List-row display for `capacitySummary`.
+ *
+ * `hasUnlimited` wins outright — showing the finite subtotal as if it were the
+ * event total would understate it. Returns null for a category-less event so
+ * the caller can show the same affordance as the price column.
+ */
+export const describeCapacityCell = (summary, priceRange) => {
+  if (!summary || !priceRange) return null
+  if (summary.hasUnlimited) return { people: 'Unlimited', tickets: null }
+  return {
+    people: `${summary.totalPeople} ${summary.totalPeople === 1 ? 'person' : 'people'}`,
+    tickets: `${summary.totalTickets} ticket${summary.totalTickets === 1 ? '' : 's'}`,
+  }
+}
+
 export const formatRowPrice = (row) => {
   const paise = rupeeInputToPaise(row.price)
   return paise === null ? '—' : formatPaise(paise)
