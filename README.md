@@ -96,6 +96,7 @@ pick → decodeForCrop()   HEIC → JPEG; JPEG/PNG/WebP pass through
 |----------|--------|-------|---------------|---------|
 | Banner   | 16:9   | 1     | 1920          | 0.8     |
 | Gallery  | 1:1    | ≤ 5   | 1080          | 0.8     |
+| Artist   | 1:1    | ≤ 10  | 720           | 0.8     |
 
 Things in here that look redundant and aren't:
 
@@ -119,8 +120,11 @@ Things in here that look redundant and aren't:
 - **Retry reuses the cropped file** — a failed upload must not send the admin
   back through the crop tool.
 
-Artist photos still use the older direct-upload path; their ratio needs
-deciding before they move onto this pipeline.
+Artist photos run the same pipeline at **1:1, max 720** — square because the
+consumer renders them as a 72px circle (`ArtistAvatar.jsx`), and 720 is ~10x
+that even at 3x DPR. The admin's default avatar mirrors the consumer's too: the
+artist's initial over a tint, sitting *under* the photo so an expired presigned
+URL reveals the initial rather than a broken-image glyph.
 
 ## Where the API differs from the written spec
 

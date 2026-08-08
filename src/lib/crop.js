@@ -87,5 +87,11 @@ export async function getCroppedWebp(imageSrc, cropPixels, { maxLong = 1080, qua
 export const BANNER_CROP = { aspect: 16 / 9, maxLong: 1920, quality: 0.8 }
 export const GALLERY_CROP = { aspect: 1, maxLong: 1080, quality: 0.8 }
 
+/* Artist photos are square because the consumer renders them as a 72px circle
+   with object-cover (see ArtistAvatar.jsx in the consumer app). 720 is ~10x the
+   display size, ample even at 3x DPR — raise it here if artists ever get a
+   larger surface. */
+export const ARTIST_CROP = { aspect: 1, maxLong: 720, quality: 0.8 }
+
 /** iPhone users can't select their own photos unless HEIC is in `accept`. */
 export const FILE_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif'

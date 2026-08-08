@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  ALLOWED_IMAGE_TYPES,
   MAX_ARTISTS,
   setArtistPhoto,
   setLineup,
@@ -8,9 +7,13 @@ import {
 } from '../api/artists'
 import { errorMessage } from '../lib/errors'
 import { INSTAGRAM_ERROR, handleForApi, isInvalidHandle, toBareHandle } from '../lib/instagram'
+import { ARTIST_CROP, FILE_ACCEPT } from '../lib/crop'
+import useCropQueue from '../hooks/useCropQueue'
 import Button from './Button'
 import Alert from './Alert'
 import Avatar from './Avatar'
+import PhotoCropper from './PhotoCropper'
+import PreparingOverlay from './PreparingOverlay'
 
 /**
  * The event lineup — up to 10 artists, position 0 is the headliner.
@@ -28,6 +31,10 @@ import Avatar from './Avatar'
  * The PUT is an upsert: every saved artist's `id` is sent back so it's updated
  * in place and keeps its photo. Dropping the id would recreate the row and
  * silently orphan the photo.
+ *
+ * Photos go through the same crop pipeline as the banner and gallery — pick →
+ * HEIC decode → crop → WebP → presigned PUT — at 1:1, because the consumer
+ * renders artists as circles.
  */
 
 let tempCounter = 0
@@ -60,6 +67,11 @@ export default function LineupManager({ eventId, artists, onChange }) {
   const [saved, setSaved] = useState(false)
   const [busyPhotoKey, setBusyPhotoKey] = useState(null)
   const fileInputs = useRef({})
+
+  // Which row the queued file belongs to. One row picks at a time, so the crop
+  // queue only ever holds that row's file.
+  const [photoTarget, setPhotoTarget] = useState(null)
+  const crop = useCropQueue()
 
   const dirty =
     rows.length !== initial.length ||
@@ -131,23 +143,34 @@ export default function LineupManager({ eventId, artists, onChange }) {
     }
   }
 
-  const handlePickPhoto = async (index, event) => {
+  const handlePickPhoto = (index, event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
 
     const row = rows[index]
-    if (!row.id) return // guarded in the UI too
+    if (!row.id) return // guarded in the UI too — a photo needs a saved artist
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      setError('Choose a JPEG, PNG or WebP image.')
-      return
-    }
-
+    // Type checking happens in decodeForCrop, which also accepts HEIC and
+    // converts it; the crop step is what guarantees a WebP reaches S3.
     setError('')
-    setBusyPhotoKey(row.key)
+    setPhotoTarget(row.key)
+    crop.enqueue([file])
+  }
+
+  /** Upload the cropped WebP for whichever row queued it. */
+  const handleCropConfirm = async (croppedFile) => {
+    const targetKey = photoTarget
+    crop.advance()
+    setPhotoTarget(null)
+
+    const index = rows.findIndex((r) => r.key === targetKey)
+    const row = rows[index]
+    if (!row?.id) return
+
+    setBusyPhotoKey(targetKey)
     try {
-      const photoUrl = await uploadArtistPhoto(eventId, row.id, file)
+      const photoUrl = await uploadArtistPhoto(eventId, row.id, croppedFile)
       update(index, { photoUrl })
       onChange(
         rows.map((r, i) =>
@@ -181,9 +204,13 @@ export default function LineupManager({ eventId, artists, onChange }) {
 
   return (
     <div>
-      {error && (
-        <Alert tone="error" className="mb-4" onDismiss={() => setError('')}>
-          {error}
+      {(error || crop.error) && (
+        <Alert
+          tone="error"
+          className="mb-4"
+          onDismiss={() => { setError(''); crop.setError('') }}
+        >
+          {error || crop.error}
         </Alert>
       )}
       {saved && !dirty && (
@@ -300,7 +327,7 @@ export default function LineupManager({ eventId, artists, onChange }) {
                     fileInputs.current[row.key] = el
                   }}
                   type="file"
-                  accept={ALLOWED_IMAGE_TYPES.join(',')}
+                  accept={FILE_ACCEPT}
                   onChange={(e) => handlePickPhoto(i, e)}
                   className="hidden"
                 />
@@ -372,6 +399,20 @@ export default function LineupManager({ eventId, artists, onChange }) {
         <p className="mt-2 text-xs text-gray-500">
           Save the lineup to enable photo upload for newly added artists.
         </p>
+      )}
+
+      {crop.preparing && !crop.cropSrc && <PreparingOverlay />}
+
+      {crop.cropSrc && (
+        <PhotoCropper
+          imageSrc={crop.cropSrc}
+          aspect={ARTIST_CROP.aspect}
+          maxLong={ARTIST_CROP.maxLong}
+          quality={ARTIST_CROP.quality}
+          title="Position the artist photo (square)"
+          onConfirm={handleCropConfirm}
+          onCancel={() => { crop.advance(); setPhotoTarget(null) }}
+        />
       )}
     </div>
   )
