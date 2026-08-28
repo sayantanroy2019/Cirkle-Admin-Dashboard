@@ -86,6 +86,33 @@ export const uploadToS3 = (uploadUrl, file, onProgress) =>
       : undefined,
   })
 
+/**
+ * Presign the event's itinerary PDF — same handshake as images, PDF-only.
+ * The backend rejects any other contentType.
+ */
+export const getItineraryUploadUrl = async (eventId) => {
+  const { data } = await api.post(`/admin/events/${eventId}/itinerary-url`, {
+    contentType: 'application/pdf',
+  })
+  return data // { uploadUrl, key }
+}
+
+/**
+ * Attach an uploaded key as the itinerary, or clear it with s3Key: null.
+ * Returns the fresh presigned view URL (null after a clear).
+ */
+export const setItinerary = async (eventId, s3Key) => {
+  const { data } = await api.patch(`/admin/events/${eventId}/itinerary`, { s3Key })
+  return data.itineraryUrl
+}
+
+/** Presign → PUT the PDF bytes → return the key to attach on save. */
+export const uploadItinerary = async (eventId, file, onProgress) => {
+  const { uploadUrl, key } = await getItineraryUploadUrl(eventId)
+  await uploadToS3(uploadUrl, file, onProgress)
+  return { key }
+}
+
 /** Attach an uploaded key as the banner. Returns the fresh presigned view URL. */
 export const setBanner = async (eventId, s3Key) => {
   const { data } = await api.patch(`/admin/events/${eventId}/banner`, { s3Key })

@@ -11,6 +11,7 @@ import Button from '../components/Button'
 import Alert from '../components/Alert'
 import EventFields from '../components/EventFields'
 import BannerUploader from '../components/BannerUploader'
+import ItineraryUploader from '../components/ItineraryUploader'
 import GalleryManager from '../components/GalleryManager'
 import LineupManager from '../components/LineupManager'
 import TicketCategories from '../components/TicketCategories'
@@ -218,6 +219,20 @@ export default function EventDetailPage() {
             </form>
           </Card>
         </div>
+
+        <Card
+          title="Itinerary"
+          description="Optional PDF supplied by the organizer. When present, attendees see an Itinerary section on the event page; removing it hides that section entirely."
+        >
+          <ItineraryUploader
+            eventId={id}
+            itineraryUrl={event.itineraryUrl}
+            onChange={(itineraryUrl) => {
+              setEvent((prev) => ({ ...prev, itineraryUrl }))
+              setFlash(itineraryUrl ? 'Itinerary updated.' : 'Itinerary removed.')
+            }}
+          />
+        </Card>
 
         <Card
           title="Banner"
