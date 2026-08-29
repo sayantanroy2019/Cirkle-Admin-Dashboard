@@ -52,6 +52,7 @@ export const emptyEventForm = () => ({
   requireFacebook: false,
   requireInstagram: false,
   requireLinkedin: false,
+  googleFormUrl: '',
 })
 
 /** An API event → form strings. Nulls become '' so inputs stay controlled. */
@@ -73,6 +74,7 @@ export const eventToForm = (event) => ({
   requireFacebook: Boolean(event.requireFacebook),
   requireInstagram: Boolean(event.requireInstagram),
   requireLinkedin: Boolean(event.requireLinkedin),
+  googleFormUrl: event.googleFormUrl ?? '',
 })
 
 const parsePositiveInt = (value) => {
@@ -127,6 +129,26 @@ export const validateEventForm = (form, { requireAll, enforceFutureStart }) => {
     if (Number.isNaN(n)) errors.targetGroupSize = 'Enter a whole number above zero.'
   }
 
+  // Mirrors the backend rule: only genuine Google Forms links, https only —
+  // this URL is shown to applicants inside the consumer app's popup.
+  const gform = String(form.googleFormUrl ?? '').trim()
+  if (gform) {
+    let ok = false
+    try {
+      const u = new URL(gform)
+      ok =
+        u.protocol === 'https:' &&
+        ((u.hostname === 'docs.google.com' && u.pathname.startsWith('/forms/')) ||
+          u.hostname === 'forms.gle')
+    } catch {
+      ok = false
+    }
+    if (!ok) {
+      errors.googleFormUrl =
+        'Paste a Google Forms link (docs.google.com/forms/… or forms.gle/…).'
+    }
+  }
+
   return errors
 }
 
@@ -147,6 +169,7 @@ export const formToCreatePayload = (form) => ({
   requireFacebook: Boolean(form.requireFacebook),
   requireInstagram: Boolean(form.requireInstagram),
   requireLinkedin: Boolean(form.requireLinkedin),
+  googleFormUrl: form.googleFormUrl.trim() || null,
 })
 
 /**

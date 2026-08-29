@@ -158,6 +158,23 @@ export default function EventFields({
             />
           ))}
         </div>
+
+        {/* Only meaningful for invite-only events: the form gates the
+            invitation request, not the purchase. */}
+        {form.eventType === 'invite_only' && (
+          <div className="mt-4">
+            <Field
+              label="Google Form for extra questions"
+              value={form.googleFormUrl}
+              onChange={setField('googleFormUrl')}
+              error={errors.googleFormUrl}
+              hint="Optional. Applicants must fill this form before requesting an invitation; the organizer reviews responses in Google Forms before accepting."
+              disabled={disabled}
+              placeholder="https://forms.gle/…"
+              autoComplete="off"
+            />
+          </div>
+        )}
       </fieldset>
     </div>
   )
