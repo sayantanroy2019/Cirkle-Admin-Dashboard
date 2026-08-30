@@ -145,7 +145,7 @@ export default function EventFields({
         </legend>
         <p className="mt-1 text-xs text-gray-500">
           Attendees must have these handles on their profile before they can buy
-          a ticket or request an invitation.
+          a ticket (open events) or request an invitation (invite-only).
         </p>
         <div className="mt-3 space-y-2.5">
           {SOCIAL_REQUIREMENTS.map(({ key, label }) => (
@@ -159,22 +159,25 @@ export default function EventFields({
           ))}
         </div>
 
-        {/* Only meaningful for invite-only events: the form gates the
-            invitation request, not the purchase. */}
-        {form.eventType === 'invite_only' && (
-          <div className="mt-4">
-            <Field
-              label="Google Form for extra questions"
-              value={form.googleFormUrl}
-              onChange={setField('googleFormUrl')}
-              error={errors.googleFormUrl}
-              hint="Optional. Applicants must fill this form before requesting an invitation; the organizer reviews responses in Google Forms before accepting."
-              disabled={disabled}
-              placeholder="https://forms.gle/…"
-              autoComplete="off"
-            />
-          </div>
-        )}
+        {/* Applies to both event types, at different moments: it gates the
+            invitation request on invite-only events and the purchase on open
+            ones. The hint names the moment for the type currently chosen. */}
+        <div className="mt-4">
+          <Field
+            label="Google Form for extra questions"
+            value={form.googleFormUrl}
+            onChange={setField('googleFormUrl')}
+            error={errors.googleFormUrl}
+            hint={
+              form.eventType === 'invite_only'
+                ? 'Optional. Applicants must fill this form before requesting an invitation; the organizer reviews responses in Google Forms before accepting.'
+                : 'Optional. Attendees must confirm they have filled this form before buying a ticket; the organizer sees responses in Google Forms.'
+            }
+            disabled={disabled}
+            placeholder="https://forms.gle/…"
+            autoComplete="off"
+          />
+        </div>
       </fieldset>
     </div>
   )
