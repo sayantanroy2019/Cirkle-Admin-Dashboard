@@ -29,6 +29,7 @@ export default function PromoPopupCard({ eventId }) {
   const [couponId, setCouponId] = useState('')
   const [validFrom, setValidFrom] = useState('')
   const [validUntil, setValidUntil] = useState('')
+  const [delaySeconds, setDelaySeconds] = useState('0')
   const [active, setActive] = useState(true)
 
   const [saving, setSaving] = useState(false)
@@ -49,6 +50,7 @@ export default function PromoPopupCard({ eventId }) {
           setCouponId(popup.couponId ?? '')
           setValidFrom(isoToLocalInput(popup.validFrom))
           setValidUntil(popup.validUntil ? isoToLocalInput(popup.validUntil) : '')
+          setDelaySeconds(String(popup.delaySeconds ?? 0))
           setActive(popup.isActive)
         }
         setLoaded(true)
@@ -70,6 +72,11 @@ export default function PromoPopupCard({ eventId }) {
       setError('The end of the window must be after its start.')
       return
     }
+    const delay = Number(delaySeconds)
+    if (!Number.isInteger(delay) || delay < 0 || delay > 300) {
+      setError('Delay must be a whole number of seconds, 0–300.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -79,6 +86,7 @@ export default function PromoPopupCard({ eventId }) {
         couponId: couponId || null,
         validFrom: validFrom ? localInputToIso(validFrom) : undefined,
         validUntil: validUntil ? localInputToIso(validUntil) : null,
+        delaySeconds: delay,
         isActive: active,
       })
       setExists(true)
@@ -171,6 +179,15 @@ export default function PromoPopupCard({ eventId }) {
           value={validUntil}
           onChange={(e) => setValidUntil(e.target.value)}
           hint="Empty = until you turn it off."
+        />
+        <Field
+          label="Show after (seconds)"
+          type="number"
+          min="0"
+          max="300"
+          value={delaySeconds}
+          onChange={(e) => setDelaySeconds(e.target.value)}
+          hint="How long someone is on the page before the popup appears. 0 = right away."
         />
       </div>
 
