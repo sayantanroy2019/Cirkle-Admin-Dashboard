@@ -31,6 +31,7 @@ const EMPTY_FORM = {
   validUntil: '',
   limitTotal: '',
   limitPerUser: '1',
+  active: true,
 }
 
 function windowLabel(coupon) {
@@ -110,6 +111,7 @@ export default function CouponManager({ eventId }) {
         validUntil: form.validUntil ? localInputToIso(form.validUntil) : undefined,
         usageLimitTotal: form.limitTotal.trim() === '' ? null : Number(form.limitTotal),
         usageLimitPerUser: Number(form.limitPerUser),
+        isActive: form.active,
       })
       setCoupons((prev) => [created, ...(prev ?? [])])
       setForm(EMPTY_FORM)
@@ -288,6 +290,15 @@ export default function CouponManager({ eventId }) {
               hint="How many times one person can use it."
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+            />
+            Active immediately — untick to prepare the coupon now and switch it on later
+          </label>
           <div className="flex gap-2">
             <Button type="submit" loading={saving}>
               Create coupon
