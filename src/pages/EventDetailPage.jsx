@@ -16,6 +16,7 @@ import GalleryManager from '../components/GalleryManager'
 import LineupManager from '../components/LineupManager'
 import TicketCategories from '../components/TicketCategories'
 import CouponManager from '../components/CouponManager'
+import PromoPopupCard from '../components/PromoPopupCard'
 import Spinner from '../components/Spinner'
 
 function Card({ title, description, children }) {
@@ -266,6 +267,13 @@ export default function EventDetailPage() {
           description="Percentage discounts for this event only, usable inside their validity window. GST is charged on the discounted price. Deactivate is the kill switch for a leaked code."
         >
           <CouponManager eventId={id} />
+        </Card>
+
+        <Card
+          title="Promo popup"
+          description="A flash-sale popup users see when they land on this event's page — once per session, while Active and inside its window. Attach a coupon to show its live code."
+        >
+          <PromoPopupCard eventId={id} />
         </Card>
 
         <Card
