@@ -15,6 +15,7 @@ import ItineraryUploader from '../components/ItineraryUploader'
 import GalleryManager from '../components/GalleryManager'
 import LineupManager from '../components/LineupManager'
 import TicketCategories from '../components/TicketCategories'
+import CouponManager from '../components/CouponManager'
 import Spinner from '../components/Spinner'
 
 function Card({ title, description, children }) {
@@ -258,6 +259,13 @@ export default function EventDetailPage() {
             capacitySummary={event.capacitySummary}
             onChange={applyUpdate}
           />
+        </Card>
+
+        <Card
+          title="Coupon codes"
+          description="Percentage discounts for this event only, usable inside their validity window. GST is charged on the discounted price. Deactivate is the kill switch for a leaked code."
+        >
+          <CouponManager eventId={id} />
         </Card>
 
         <Card
