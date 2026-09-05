@@ -6,7 +6,14 @@ import {
   updateCoupon,
 } from '../api/coupons'
 import { errorMessage } from '../lib/errors'
-import { formatDateTime, formatPaise, localInputToIso, rupeeInputToPaise } from '../lib/format'
+import {
+  formatDateTime,
+  formatPaise,
+  isoToLocalInput,
+  localInputToIso,
+  paiseToRupeeInput,
+  rupeeInputToPaise,
+} from '../lib/format'
 import Field from './Field'
 import Button from './Button'
 import Alert from './Alert'
@@ -51,6 +58,9 @@ export default function CouponManager({ eventId }) {
   const [busyId, setBusyId] = useState(null)
 
   const [showForm, setShowForm] = useState(false)
+  // null = the form is creating; a coupon id = the form is editing that row.
+  const [editingId, setEditingId] = useState(null)
+  const [editingCode, setEditingCode] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState({})
   const [saving, setSaving] = useState(false)
@@ -97,28 +107,64 @@ export default function CouponManager({ eventId }) {
     return Object.keys(errors).length === 0
   }
 
-  const handleCreate = async (e) => {
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setEditingCode('')
+    setForm(EMPTY_FORM)
+    setFormErrors({})
+  }
+
+  // Prefill the shared form from an existing row. Same fields, same
+  // validation — only the submit differs (PATCH instead of POST).
+  const handleEdit = (coupon) => {
+    setEditingId(coupon.id)
+    setEditingCode(coupon.code)
+    setForm({
+      code: coupon.code,
+      percent: String(coupon.discountPercent ?? ''),
+      maxRupees: coupon.maxDiscountPaise ? paiseToRupeeInput(coupon.maxDiscountPaise) : '',
+      validFrom: coupon.validFrom ? isoToLocalInput(coupon.validFrom) : '',
+      validUntil: coupon.validUntil ? isoToLocalInput(coupon.validUntil) : '',
+      limitTotal: coupon.usageLimitTotal ? String(coupon.usageLimitTotal) : '',
+      limitPerUser: String(coupon.usageLimitPerUser ?? 1),
+      active: coupon.isActive,
+    })
+    setFormErrors({})
+    setShowForm(true)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (saving || !validateForm()) return
     setSaving(true)
     setActionError('')
+    const payload = {
+      code: form.code.trim(),
+      discountPercent: Number(form.percent),
+      // null clears the optional fields on PATCH; on POST it means "none".
+      maxDiscountPaise: form.maxRupees.trim() === '' ? null : rupeeInputToPaise(form.maxRupees),
+      // Empty "valid from" means "now" on create and "leave unchanged" on
+      // edit — valid_from is NOT NULL in the schema, so it can't be cleared.
+      validFrom: form.validFrom ? localInputToIso(form.validFrom) : undefined,
+      validUntil: form.validUntil ? localInputToIso(form.validUntil) : editingId ? null : undefined,
+      usageLimitTotal: form.limitTotal.trim() === '' ? null : Number(form.limitTotal),
+      usageLimitPerUser: Number(form.limitPerUser),
+      isActive: form.active,
+    }
     try {
-      const created = await createEventCoupon(eventId, {
-        code: form.code.trim(),
-        discountPercent: Number(form.percent),
-        maxDiscountPaise: form.maxRupees.trim() === '' ? null : rupeeInputToPaise(form.maxRupees),
-        validFrom: form.validFrom ? localInputToIso(form.validFrom) : undefined,
-        validUntil: form.validUntil ? localInputToIso(form.validUntil) : undefined,
-        usageLimitTotal: form.limitTotal.trim() === '' ? null : Number(form.limitTotal),
-        usageLimitPerUser: Number(form.limitPerUser),
-        isActive: form.active,
-      })
-      setCoupons((prev) => [created, ...(prev ?? [])])
-      setForm(EMPTY_FORM)
-      setShowForm(false)
-      setFlash(`Coupon ${created.code} created.`)
+      if (editingId) {
+        const updated = await updateCoupon(editingId, payload)
+        setCoupons((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...updated } : c)))
+        setFlash(`Coupon ${updated.code} updated.`)
+      } else {
+        const created = await createEventCoupon(eventId, payload)
+        setCoupons((prev) => [created, ...(prev ?? [])])
+        setFlash(`Coupon ${created.code} created.`)
+      }
+      closeForm()
     } catch (err) {
-      setActionError(errorMessage(err, "Couldn't create the coupon."))
+      setActionError(errorMessage(err, editingId ? "Couldn't update the coupon." : "Couldn't create the coupon."))
     } finally {
       setSaving(false)
     }
@@ -203,6 +249,9 @@ export default function CouponManager({ eventId }) {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                <Button variant="secondary" onClick={() => handleEdit(coupon)}>
+                  Edit
+                </Button>
                 <Button
                   variant={coupon.isActive ? 'caution' : 'secondary'}
                   loading={busyId === coupon.id}
@@ -226,7 +275,12 @@ export default function CouponManager({ eventId }) {
       )}
 
       {showForm ? (
-        <form onSubmit={handleCreate} className="space-y-4 rounded-lg border border-gray-200 p-4">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 p-4">
+          {editingId && (
+            <p className="text-sm font-medium text-gray-700">
+              Editing <span className="font-mono font-semibold">{editingCode}</span>
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="Code"
@@ -301,23 +355,23 @@ export default function CouponManager({ eventId }) {
           </label>
           <div className="flex gap-2">
             <Button type="submit" loading={saving}>
-              Create coupon
+              {editingId ? 'Save changes' : 'Create coupon'}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={saving}
-              onClick={() => {
-                setShowForm(false)
-                setFormErrors({})
-              }}
-            >
+            <Button type="button" variant="secondary" disabled={saving} onClick={closeForm}>
               Cancel
             </Button>
           </div>
         </form>
       ) : (
-        <Button variant="secondary" onClick={() => setShowForm(true)}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setEditingId(null)
+            setEditingCode('')
+            setForm(EMPTY_FORM)
+            setShowForm(true)
+          }}
+        >
           Add coupon
         </Button>
       )}
