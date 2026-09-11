@@ -53,6 +53,7 @@ export const emptyEventForm = () => ({
   requireInstagram: false,
   requireLinkedin: false,
   googleFormUrl: '',
+  whosGoingMin: '',
 })
 
 /** An API event → form strings. Nulls become '' so inputs stay controlled. */
@@ -75,6 +76,7 @@ export const eventToForm = (event) => ({
   requireInstagram: Boolean(event.requireInstagram),
   requireLinkedin: Boolean(event.requireLinkedin),
   googleFormUrl: event.googleFormUrl ?? '',
+  whosGoingMin: String(event.whosGoingMin ?? 0),
 })
 
 const parsePositiveInt = (value) => {
@@ -119,6 +121,13 @@ export const validateEventForm = (form, { requireAll, enforceFutureStart }) => {
     } else if (startIso && new Date(endIso) <= new Date(startIso)) {
       // Not a backend rule, but an end before the start is always a mistake.
       errors.endsAt = 'The end must be after the start.'
+    }
+  }
+
+  if (String(form.whosGoingMin ?? '').trim()) {
+    const n = Number(form.whosGoingMin)
+    if (!Number.isInteger(n) || n < 0) {
+      errors.whosGoingMin = 'Enter a whole number (0 = always show).'
     }
   }
 
@@ -170,6 +179,8 @@ export const formToCreatePayload = (form) => ({
   requireInstagram: Boolean(form.requireInstagram),
   requireLinkedin: Boolean(form.requireLinkedin),
   googleFormUrl: form.googleFormUrl.trim() || null,
+  // Blank = 0 = always show the Who's Going section.
+  whosGoingMin: String(form.whosGoingMin ?? '').trim() === '' ? 0 : Number(form.whosGoingMin),
 })
 
 /**
