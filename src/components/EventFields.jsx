@@ -139,6 +139,18 @@ export default function EventFields({
         placeholder="An unforgettable evening…"
       />
 
+      <Field
+        label="Show “Who’s Going” after N attendees"
+        type="number"
+        min="0"
+        value={form.whosGoingMin}
+        onChange={setField('whosGoingMin')}
+        error={errors.whosGoingMin}
+        hint="Hide the Who’s Going section on the event page until this many people have bought a ticket — so early visitors never see an empty list. 0 = always show."
+        disabled={disabled}
+        placeholder="0"
+      />
+
       <fieldset>
         <legend className="text-sm font-medium text-gray-700">
           Required social handles
