@@ -1,4 +1,4 @@
-import { isoToLocalInput, localInputToIso } from './format'
+import { isoToLocalInput, localInputToIso, paiseToRupeeInput, rupeeInputToPaise } from './format'
 
 /**
  * Shared shape, validation and payload-building for the event form, so create
@@ -54,6 +54,7 @@ export const emptyEventForm = () => ({
   requireLinkedin: false,
   googleFormUrl: '',
   whosGoingMin: '',
+  platformFeeRupees: '',
 })
 
 /** An API event → form strings. Nulls become '' so inputs stay controlled. */
@@ -77,6 +78,8 @@ export const eventToForm = (event) => ({
   requireLinkedin: Boolean(event.requireLinkedin),
   googleFormUrl: event.googleFormUrl ?? '',
   whosGoingMin: String(event.whosGoingMin ?? 0),
+  // Stored in paise; the form edits rupees. 0 shows as '0'.
+  platformFeeRupees: paiseToRupeeInput(event.platformFeePaise ?? 0),
 })
 
 const parsePositiveInt = (value) => {
@@ -131,6 +134,13 @@ export const validateEventForm = (form, { requireAll, enforceFutureStart }) => {
     }
   }
 
+  if (String(form.platformFeeRupees ?? '').trim()) {
+    const paise = rupeeInputToPaise(form.platformFeeRupees)
+    if (paise === null || paise < 0) {
+      errors.platformFeeRupees = 'Enter a ₹ amount (0 = no fee).'
+    }
+  }
+
   if (requireAll && !String(form.targetGroupSize).trim()) {
     errors.targetGroupSize = 'Enter a target group size.'
   } else if (String(form.targetGroupSize).trim()) {
@@ -181,6 +191,8 @@ export const formToCreatePayload = (form) => ({
   googleFormUrl: form.googleFormUrl.trim() || null,
   // Blank = 0 = always show the Who's Going section.
   whosGoingMin: String(form.whosGoingMin ?? '').trim() === '' ? 0 : Number(form.whosGoingMin),
+  // Per-person platform fee, entered in rupees, sent in paise. Blank = 0.
+  platformFeePaise: String(form.platformFeeRupees ?? '').trim() === '' ? 0 : (rupeeInputToPaise(form.platformFeeRupees) ?? 0),
 })
 
 /**

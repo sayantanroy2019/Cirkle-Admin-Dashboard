@@ -151,6 +151,19 @@ export default function EventFields({
         placeholder="0"
       />
 
+      <Field
+        label="Platform fee (₹ per person)"
+        type="number"
+        min="0"
+        step="0.01"
+        value={form.platformFeeRupees}
+        onChange={setField('platformFeeRupees')}
+        error={errors.platformFeeRupees}
+        hint="Added to each booking after any discount and before GST — charged per person the ticket admits (a Couple Pass pays it twice). 0 = no fee."
+        disabled={disabled}
+        placeholder="0"
+      />
+
       <fieldset>
         <legend className="text-sm font-medium text-gray-700">
           Required social handles
