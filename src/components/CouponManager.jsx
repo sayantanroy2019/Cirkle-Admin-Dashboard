@@ -86,8 +86,8 @@ export default function CouponManager({ eventId }) {
       errors.code = '3–20 characters: letters, numbers, hyphens.'
     }
     const percent = Number(form.percent)
-    if (!Number.isInteger(percent) || percent < 1 || percent > 99) {
-      errors.percent = 'A whole number from 1 to 99.'
+    if (!Number.isInteger(percent) || percent < 1 || percent > 100) {
+      errors.percent = 'A whole number from 1 to 100.'
     }
     if (form.maxRupees.trim() !== '') {
       const paise = rupeeInputToPaise(form.maxRupees)
@@ -295,11 +295,11 @@ export default function CouponManager({ eventId }) {
               label="Discount %"
               type="number"
               min="1"
-              max="99"
+              max="100"
               value={form.percent}
               onChange={setField('percent')}
               error={formErrors.percent}
-              hint="1–99. GST is charged on the discounted price."
+              hint="1–100. GST is charged on the discounted price; 100% leaves just the platform fee + its GST."
               placeholder="20"
             />
             <Field
