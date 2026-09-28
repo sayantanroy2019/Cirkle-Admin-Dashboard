@@ -94,6 +94,44 @@ export default function OrderDetailPage() {
           </p>
         </Card>
 
+        <Card title={`Tickets${order.ticketCount ? ` · ${order.ticketCount}` : ''}`}>
+          {order.items?.length ? (
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500">
+                    <th className="pb-2 font-medium">Type</th>
+                    <th className="pb-2 text-right font-medium">Qty</th>
+                    <th className="pb-2 text-right font-medium">Unit</th>
+                    <th className="pb-2 text-right font-medium">Line</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item) => (
+                    <tr key={item.eventTicketCategoryId} className="border-t border-gray-100">
+                      <td className="py-1.5 text-gray-900">
+                        {item.categoryName}
+                        <span className="block text-xs text-gray-500">
+                          admits {item.admitsCount} each
+                        </span>
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{item.quantity}</td>
+                      <td className="py-1.5 text-right tabular-nums">{formatPaise(item.unitPricePaise)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{formatPaise(item.linePaise)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-3 text-xs text-gray-500">
+                One QR for the whole booking — admits {order.admitsTotal}{' '}
+                {order.admitsTotal === 1 ? 'person' : 'people'}. Unit prices are frozen per line.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">No line items recorded for this order.</p>
+          )}
+        </Card>
+
         <Card title="Payment">
           <DetailList
             items={[

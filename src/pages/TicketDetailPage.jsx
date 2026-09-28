@@ -82,8 +82,26 @@ export default function TicketDetailPage() {
                 value: ticket.checkedInAt ? formatDateTime(ticket.checkedInAt) : null,
               },
               { label: 'Issued', value: formatDateTime(ticket.createdAt) },
+              {
+                label: 'Admits',
+                value: ticket.admitsTotal
+                  ? `${ticket.admitsTotal} ${ticket.admitsTotal === 1 ? 'person' : 'people'}`
+                  : null,
+              },
             ]}
           />
+          {ticket.items?.length > 0 && (
+            <ul className="mt-3 space-y-1 border-t border-gray-100 pt-3 text-sm">
+              {ticket.items.map((item) => (
+                <li key={item.eventTicketCategoryId} className="flex items-center justify-between">
+                  <span className="text-gray-900">
+                    {item.quantity}× {item.categoryName}
+                  </span>
+                  <span className="text-xs text-gray-500">admits {item.admitsTotal}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
 
         <Card title="Event">
