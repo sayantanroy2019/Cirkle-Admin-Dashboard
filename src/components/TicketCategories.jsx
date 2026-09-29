@@ -4,6 +4,7 @@ import { updateEvent } from '../api/events'
 import { errorMessage, isConflict } from '../lib/errors'
 import {
   MAX_EVENT_CATEGORIES,
+  MAX_CATEGORY_NOTE_LENGTH,
   QUANTITY_STATE,
   buildCapacitySummary,
   categoryToRow,
@@ -87,7 +88,8 @@ export default function TicketCategories({ eventId, categories, capacitySummary,
         String(r.price) !== String(was.price) ||
         String(r.admits) !== String(was.admits) ||
         r.unlimited !== was.unlimited ||
-        (!r.unlimited && String(r.quantity) !== String(was.quantity))
+        (!r.unlimited && String(r.quantity) !== String(was.quantity)) ||
+        String(r.note ?? '').trim() !== String(was.note ?? '').trim()
       )
     })
 
@@ -324,6 +326,34 @@ export default function TicketCategories({ eventId, categories, capacitySummary,
                       Remove
                     </button>
                   </div>
+                </div>
+
+                {/* Note — one line buyers read under this tier on the picker
+                    ("Entry + 2 drinks", "Valid only before 9pm"). Optional. */}
+                <label className="mt-3 block text-xs font-medium text-gray-600">
+                  Note{' '}
+                  <span className="font-normal text-gray-400">
+                    (optional — shown to buyers under this ticket)
+                  </span>
+                  <input
+                    type="text"
+                    value={row.note ?? ''}
+                    onChange={(e) => patchRow(row.uid, { note: e.target.value })}
+                    disabled={saving}
+                    maxLength={MAX_CATEGORY_NOTE_LENGTH}
+                    placeholder="e.g. Entry + 2 drinks · valid only before 9pm"
+                    className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:outline-none disabled:bg-gray-50 ${
+                      errs.note
+                        ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:border-brand focus:ring-brand'
+                    }`}
+                  />
+                </label>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  {errs.note ? <p className="text-red-600">{errs.note}</p> : <span />}
+                  <span className="text-gray-400 tabular-nums">
+                    {String(row.note ?? '').length}/{MAX_CATEGORY_NOTE_LENGTH}
+                  </span>
                 </div>
 
                 {/* Inline create-a-name */}
