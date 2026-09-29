@@ -17,22 +17,18 @@ import Alert from '../components/Alert'
 import { INVITATION_STATUS_TONE } from '../lib/status'
 import { Phone } from '../components/Contact'
 
-// What lands in the sheet — the table's columns, unpacked into plain cells,
-// plus the ids so a row can be traced back. Phone is whatever the API gave
-// this admin (masked for BD), same as the table.
+// What lands in the sheet — a shareable list, so full names and no internal
+// ids. Phone is whatever the API gave this admin (masked for BD), same as
+// the table.
 const EXPORT_COLUMNS = [
-  { header: 'Requested by', value: (i) => fullName(i.user?.firstName) },
+  { header: 'Name', value: (i) => [i.user?.firstName, i.user?.lastName].filter(Boolean).join(' ') },
   { header: 'Phone', value: (i) => i.user?.phone ?? '' },
   { header: 'Age', value: (i) => i.user?.age ?? '' },
   { header: 'Gender', value: (i) => (i.user?.gender ? titleCaseOrDash(i.user.gender) : '') },
   { header: 'Event', value: (i) => i.event?.name ?? '' },
-  { header: 'Organizer', value: (i) => i.organizer?.name ?? 'Unassigned' },
   { header: 'Status', value: (i) => titleCaseOrDash(i.status) },
   { header: 'Requested at', value: (i) => formatDateTime(i.createdAt) },
   { header: 'Decided at', value: (i) => (i.status === 'pending' ? '' : formatDateTime(i.updatedAt)) },
-  { header: 'Invitation ID', value: (i) => i.id },
-  { header: 'User ID', value: (i) => i.user?.id ?? '' },
-  { header: 'Event ID', value: (i) => i.event?.id ?? '' },
 ]
 
 const STATUS_OPTIONS = ['pending', 'accepted', 'rejected'].map((s) => ({
