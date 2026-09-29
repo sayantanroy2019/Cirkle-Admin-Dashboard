@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listInvitations } from '../api/oversight'
 import { listEvents } from '../api/events'
+import { listCities } from '../api/reference'
 import usePaginatedList from '../hooks/usePaginatedList'
 import useAsync from '../hooks/useAsync'
 import { formatDateTime, fullName, titleCaseOrDash } from '../lib/format'
@@ -23,6 +24,7 @@ import { Phone } from '../components/Contact'
 const EXPORT_COLUMNS = [
   { header: 'Name', value: (i) => [i.user?.firstName, i.user?.lastName].filter(Boolean).join(' ') },
   { header: 'Phone', value: (i) => i.user?.phone ?? '' },
+  { header: 'City', value: (i) => i.user?.city?.name ?? '' },
   { header: 'Age', value: (i) => i.user?.age ?? '' },
   { header: 'Gender', value: (i) => (i.user?.gender ? titleCaseOrDash(i.user.gender) : '') },
   { header: 'Event', value: (i) => i.event?.name ?? '' },
@@ -36,10 +38,11 @@ const STATUS_OPTIONS = ['pending', 'accepted', 'rejected'].map((s) => ({
   label: titleCaseOrDash(s),
 }))
 
-const INITIAL = { eventId: '', status: '' }
+const INITIAL = { eventId: '', status: '', cityId: '' }
 
 export default function InvitationsPage() {
   const events = useAsync(listEvents, [])
+  const cities = useAsync(listCities, [])
 
   const list = usePaginatedList(listInvitations, {
     initialFilters: INITIAL,
@@ -90,6 +93,7 @@ export default function InvitationsPage() {
           </Link>
           <span className="block text-xs text-gray-500">
             <Phone value={i.user?.phone} />
+            {i.user?.city?.name && ` · ${i.user.city.name}`}
             {i.user?.age != null && ` · ${i.user.age}`}
             {i.user?.gender && ` · ${titleCaseOrDash(i.user.gender)}`}
           </span>
@@ -159,7 +163,7 @@ export default function InvitationsPage() {
         </Alert>
       )}
 
-      <FilterBar columns={2} showClear={list.hasFilters} onClear={list.clearFilters}>
+      <FilterBar columns={3} showClear={list.hasFilters} onClear={list.clearFilters}>
         <Select
           label="Event"
           value={list.filters.eventId}
@@ -174,6 +178,15 @@ export default function InvitationsPage() {
           onChange={(e) => list.setFilter('status', e.target.value)}
           options={STATUS_OPTIONS}
           placeholder="All statuses"
+        />
+        {/* The requester's city (their profile), not the event's. */}
+        <Select
+          label="City"
+          value={list.filters.cityId}
+          onChange={(e) => list.setFilter('cityId', e.target.value)}
+          options={cities.data ?? []}
+          placeholder="All cities"
+          disabled={cities.loading}
         />
       </FilterBar>
 
