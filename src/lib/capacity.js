@@ -24,6 +24,10 @@ import { formatPaise, rupeeInputToPaise } from './format'
 
 export const MAX_EVENT_CATEGORIES = 20
 
+// A tier's note is one line buyers read under it on the picker — bounded to
+// the same length the backend (and its DB CHECK) enforce.
+export const MAX_CATEGORY_NOTE_LENGTH = 240
+
 /* ── The three inventory states ──────────────────────────────────────────
    null → unlimited · 0 → exists but nothing to sell · N > 0 → capped.
    `null` and `0` are opposites and must never be conflated.              */
@@ -73,6 +77,7 @@ export const newCategoryRow = () => ({
   admits: '1',
   quantity: '',
   unlimited: false,
+  note: '',
   ticketsSold: 0,
 })
 
@@ -85,23 +90,29 @@ export const categoryToRow = (c) => ({
   admits: String(c.admitsCount ?? 1),
   quantity: c.ticketQuantity === null || c.ticketQuantity === undefined ? '' : String(c.ticketQuantity),
   unlimited: c.ticketQuantity === null || c.ticketQuantity === undefined,
+  note: c.note ?? '',
   ticketsSold: c.ticketsSold ?? 0,
 })
 
 /**
  * A row's numeric values in API terms, plus whether it's complete enough to
  * send. Incomplete rows are what the save-time validation blocks on.
+ * An empty note is sent as null — "nothing to say", not an empty string.
  */
 export const rowToPayload = (row) => ({
   categoryId: row.categoryId,
   pricePaise: rupeeInputToPaise(row.price),
   admitsCount: Number(String(row.admits).trim()),
   ticketQuantity: row.unlimited ? null : Number(String(row.quantity).trim()),
+  note: String(row.note ?? '').trim() || null,
 })
 
 export const validateRow = (row) => {
   const errors = {}
   if (!row.categoryId) errors.categoryId = 'Choose a category.'
+  if (String(row.note ?? '').trim().length > MAX_CATEGORY_NOTE_LENGTH) {
+    errors.note = `Keep the note under ${MAX_CATEGORY_NOTE_LENGTH} characters.`
+  }
 
   const paise = rupeeInputToPaise(row.price)
   if (!String(row.price).trim()) errors.price = 'Enter a price.'
