@@ -28,6 +28,14 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    // The F&B vertical (REAL-TIME-LIVE-PAYMENT-COLLECTION-SYSTEM.md, Part 1):
+    // its own events, counter users and menus — separate from ticketing.
+    label: 'Food & Beverage',
+    items: [
+      { to: '/fnb', label: 'F&B events', built: true },
+    ],
+  },
+  {
     label: 'Settings',
     items: [
       { to: '/admins', label: 'Admins', built: true, administrativeOnly: true },

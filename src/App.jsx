@@ -20,6 +20,9 @@ import UserDetailPage from './pages/UserDetailPage'
 import AdminsPage from './pages/AdminsPage'
 import AdminCreatePage from './pages/AdminCreatePage'
 import AdminEditPage from './pages/AdminEditPage'
+import FnbEventsPage from './pages/fnb/FnbEventsPage'
+import FnbEventCreatePage from './pages/fnb/FnbEventCreatePage'
+import FnbEventDetailPage from './pages/fnb/FnbEventDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { LANDING_PATH } from './nav'
 
@@ -51,6 +54,12 @@ export default function App() {
             <Route path="/invitations" element={<InvitationsPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/:id" element={<UserDetailPage />} />
+
+            {/* F&B vertical — Part 1: events, counter users, menus. */}
+            <Route path="/fnb" element={<FnbEventsPage />} />
+            {/* /new before /:id so it isn't swallowed as an event id. */}
+            <Route path="/fnb/new" element={<FnbEventCreatePage />} />
+            <Route path="/fnb/:id" element={<FnbEventDetailPage />} />
 
             {/* The portal's one role gate. Nested inside Layout so a BD admin
                 who types the URL still gets the sidebar around the refusal. */}
