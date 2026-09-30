@@ -58,6 +58,37 @@ export async function exportToXlsx({ rows, columns, sheetName = 'Sheet1', filena
 
 const cellValue = (v) => (v === null || v === undefined ? '' : v)
 
+/**
+ * A template / plain sheet from explicit headers and row objects (keys =
+ * headers). Used for the F&B templates the admin fills in and re-uploads.
+ */
+export async function downloadXlsx({ filename, sheetName = 'Sheet1', headers, rows = [] }) {
+  const XLSX = await loadXlsx()
+  const data = rows.map((r) => Object.fromEntries(headers.map((h) => [h, cellValue(r[h])])))
+  const ws = XLSX.utils.json_to_sheet(data, { header: headers })
+  ws['!cols'] = headers.map((h) => ({ wch: Math.max(16, h.length + 4) }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31))
+  XLSX.writeFile(wb, filename)
+}
+
+/**
+ * Reads the first sheet of an uploaded .xlsx/.csv into row objects keyed by
+ * their lowercased, trimmed header. Empty cells come back as ''. Values
+ * keep their spreadsheet type (numbers stay numbers); callers coerce.
+ */
+export async function readXlsxRows(file) {
+  const XLSX = await loadXlsx()
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  if (!ws) return []
+  return XLSX.utils.sheet_to_json(ws, { defval: '', raw: true }).map((row) =>
+    Object.fromEntries(
+      Object.entries(row).map(([k, v]) => [String(k).trim().toLowerCase(), typeof v === 'string' ? v.trim() : v]),
+    ),
+  )
+}
+
 /** "Neon Lights Launch Party!" → "neon-lights-launch-party", for filenames. */
 export function slugForFilename(text, fallback = 'all') {
   const slug = String(text ?? '')
