@@ -22,7 +22,7 @@ import Spinner from '../Spinner'
  *      reveal (administrative), every reveal audited server-side.
  */
 const LABELS = {
-  topup: { one: 'top‑up user', many: 'top‑up users', nameLabel: 'Name', nameKey: 'name', help: 'One login per volunteer. Every top‑up is attributed to the person.' },
+  topup: { one: 'top‑up user', many: 'top‑up users', nameLabel: 'Name', nameKey: 'name', help: 'One login per volunteer; every top‑up is attributed to the person. A volunteer logs in with their phone number (code on WhatsApp) or with the username and PIN — add the phone to enable the first.' },
   stall: { one: 'stall counter user', many: 'stall counter users', nameLabel: 'Stall', nameKey: 'stall', help: 'One login per stall, shared by whoever is on shift. Typing a new stall name creates the stall; the menu attaches to it on the Menus tab.' },
 }
 
@@ -68,6 +68,11 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
     })
   }
   const toggle = (u) => act(`toggle:${u.id}`, async () => { await updateCounterUser(u.id, { isActive: !u.isActive }); await reload() })
+  const setPhone = (u) => {
+    const v = window.prompt('Phone number for OTP login (10 digits, or with country code). Leave empty to remove.', u.phone ?? '')
+    if (v === null) return
+    return act(`phone:${u.id}`, async () => { await updateCounterUser(u.id, { phone: v.trim() || null }); await reload() })
+  }
   const remove = (u) => {
     if (!window.confirm(`Delete ${u.username}? If this login has already transacted, disable it instead.`)) return
     return act(`delete:${u.id}`, async () => { await deleteCounterUser(u.id); setRevealed((m) => { const c = { ...m }; delete c[u.id]; return c }); await refresh() })
@@ -81,8 +86,8 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
     await downloadXlsx({
       filename: `${slugForFilename(event.name)}_${kind}-users_${todayForFilename()}.xlsx`,
       sheetName: L.many,
-      headers: [L.nameLabel, 'Username', 'Password', 'Status'],
-      rows: rows.map((u) => ({ [L.nameLabel]: kind === 'topup' ? u.displayName : u.stall?.name, Username: u.username, Password: u.password, Status: u.isActive ? 'Active' : 'Disabled' })),
+      headers: [L.nameLabel, 'Phone', 'Username', 'Password', 'Status'],
+      rows: rows.map((u) => ({ [L.nameLabel]: kind === 'topup' ? u.displayName : u.stall?.name, Phone: u.phone ?? '', Username: u.username, Password: u.password, Status: u.isActive ? 'Active' : 'Disabled' })),
     })
     say(`Downloaded ${rows.length} ${L.many} with passwords. Handle that file carefully.`)
   })
@@ -121,6 +126,7 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-500">
                   <th className="pb-2 pr-4 font-medium">{L.nameLabel}</th>
+                  <th className="pb-2 pr-4 font-medium">Phone</th>
                   <th className="pb-2 pr-4 font-medium">Username</th>
                   <th className="pb-2 pr-4 font-medium">Password</th>
                   <th className="pb-2 pr-4 font-medium">Status</th>
@@ -132,6 +138,7 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-gray-100 last:border-b-0">
                     <td className="py-2 pr-4 text-gray-900">{kind === 'topup' ? u.displayName : u.stall?.name}</td>
+                    <td className="py-2 pr-4 text-xs text-gray-700">{u.phone ?? <span className="text-gray-400">—</span>}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{u.username}</td>
                     <td className="py-2 pr-4 font-mono text-xs">
                       {revealed[u.id] ? (
@@ -151,6 +158,8 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
                     </td>
                     <td className="py-2 pr-4 text-gray-500">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : '—'}</td>
                     <td className="py-2 text-right text-xs whitespace-nowrap">
+                      <button type="button" className="text-gray-600 hover:text-gray-900" onClick={() => setPhone(u)} disabled={!!busy}>{u.phone ? 'Edit phone' : 'Set phone'}</button>
+                      <span className="mx-1.5 text-gray-300">·</span>
                       <button type="button" className="text-gray-600 hover:text-gray-900" onClick={() => rotate(u)} disabled={!!busy}>Rotate PIN</button>
                       <span className="mx-1.5 text-gray-300">·</span>
                       <button type="button" className="text-gray-600 hover:text-gray-900" onClick={() => toggle(u)} disabled={!!busy}>{u.isActive ? 'Disable' : 'Enable'}</button>
@@ -169,7 +178,7 @@ export default function CounterUsersTab({ event, kind, onChanged }) {
 }
 
 function CreateOne({ event, kind, L, canReveal, onCreated, say }) {
-  const [form, setForm] = useState({ name: '', username: '', password: '' })
+  const [form, setForm] = useState({ name: '', phone: '', username: '', password: '' })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErr('') }
@@ -179,9 +188,9 @@ function CreateOne({ event, kind, L, canReveal, onCreated, say }) {
     if (!form.name.trim()) { setErr(`Enter the ${L.nameLabel.toLowerCase()}.`); return }
     setBusy(true)
     try {
-      const r = await createCounterUser(event.id, { kind, [L.nameKey]: form.name.trim(), username: form.username.trim() || undefined, password: form.password || undefined })
+      const r = await createCounterUser(event.id, { kind, [L.nameKey]: form.name.trim(), phone: form.phone.trim() || undefined, username: form.username.trim() || undefined, password: form.password || undefined })
       say(r.password ? `Created ${r.user.username} — PIN ${r.password}` : `Created ${r.user.username}.`)
-      setForm({ name: '', username: '', password: '' })
+      setForm({ name: '', phone: '', username: '', password: '' })
       await onCreated()
     } catch (e2) {
       setErr(errorMessage(e2, `Couldn't create the ${L.one}.`))
@@ -194,6 +203,8 @@ function CreateOne({ event, kind, L, canReveal, onCreated, say }) {
       <p className="mt-1 text-xs text-gray-500">Only the {L.nameLabel.toLowerCase()} is required. Leave username and password blank to generate them ({event.code}-… and a 6‑digit PIN).</p>
       <div className="mt-3 space-y-3">
         <Field label={L.nameLabel} value={form.name} onChange={set('name')} disabled={busy} error={err} autoComplete="off" />
+        <Field label="Phone (optional)" value={form.phone} onChange={set('phone')} disabled={busy} placeholder="98765 43210" inputMode="tel" autoComplete="off"
+          hint="Lets them log in with a code on WhatsApp. 10 digits are read as +91." />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Username (optional)" value={form.username} onChange={set('username')} disabled={busy} placeholder={`${event.code}-…`} autoComplete="off" />
           <Field label="Password (optional)" value={form.password} onChange={set('password')} disabled={busy} placeholder="6‑digit PIN if blank" autoComplete="off" />
@@ -221,13 +232,13 @@ function BulkUpload({ event, kind, L, canReveal, onCreated, say }) {
       let prefill = []
       if (kind === 'stall') {
         const stalls = await listStalls(event.id)
-        prefill = stalls.map((s) => ({ stall: s.name, username: '', password: '' }))
+        prefill = stalls.map((s) => ({ stall: s.name, phone: '', username: '', password: '' }))
       }
-      if (prefill.length === 0) prefill = [{ [L.nameKey]: kind === 'topup' ? 'Rahul Sharma' : 'Chai Corner', username: '', password: '' }]
+      if (prefill.length === 0) prefill = [{ [L.nameKey]: kind === 'topup' ? 'Rahul Sharma' : 'Chai Corner', phone: kind === 'topup' ? '9876543210' : '', username: '', password: '' }]
       await downloadXlsx({
         filename: `${slugForFilename(event.name)}_${kind}-users_template.xlsx`,
         sheetName: 'Template',
-        headers: [L.nameKey, 'username', 'password'],
+        headers: [L.nameKey, 'phone', 'username', 'password'],
         rows: prefill,
       })
     } catch (e2) { setErr(errorMessage(e2, "Couldn't build the template.")) }
@@ -242,8 +253,13 @@ function BulkUpload({ event, kind, L, canReveal, onCreated, say }) {
       const mapped = []
       const origin = []
       parsed.forEach((r, i) => {
-        const row = { [L.nameKey]: String(r[L.nameKey] ?? r.name ?? r.stall ?? '').trim(), username: String(r.username ?? '').trim(), password: String(r.password ?? '').trim() }
-        if (!row[L.nameKey] && !row.username && !row.password) return   // blank line
+        const row = {
+          [L.nameKey]: String(r[L.nameKey] ?? r.name ?? r.stall ?? '').trim(),
+          phone: String(r.phone ?? r['phone number'] ?? r.mobile ?? '').trim(),
+          username: String(r.username ?? '').trim(),
+          password: String(r.password ?? '').trim(),
+        }
+        if (!row[L.nameKey] && !row.phone && !row.username && !row.password) return   // blank line
         mapped.push(row)
         origin.push(i + 2)
       })
@@ -274,8 +290,8 @@ function BulkUpload({ event, kind, L, canReveal, onCreated, say }) {
   const downloadCreated = () => downloadXlsx({
     filename: `${slugForFilename(event.name)}_${kind}-users_created_${todayForFilename()}.xlsx`,
     sheetName: 'Credentials',
-    headers: [L.nameLabel, 'Username', 'Password'],
-    rows: created.map((c) => ({ [L.nameLabel]: c.name ?? c.stall, Username: c.username, Password: c.password ?? '' })),
+    headers: [L.nameLabel, 'Phone', 'Username', 'Password'],
+    rows: created.map((c) => ({ [L.nameLabel]: c.name ?? c.stall, Phone: c.phone ?? '', Username: c.username, Password: c.password ?? '' })),
   })
 
   return (
@@ -296,7 +312,7 @@ function BulkUpload({ event, kind, L, canReveal, onCreated, say }) {
 
       {rows && (
         <div className="mt-3 rounded-lg bg-gray-50 p-3 text-sm">
-          <p className="text-gray-700"><span className="font-semibold">{rows.length}</span> rows ready · {rows.filter((r) => !r.username).length} usernames and {rows.filter((r) => !r.password).length} passwords will be generated.</p>
+          <p className="text-gray-700"><span className="font-semibold">{rows.length}</span> rows ready · {rows.filter((r) => r.phone).length} with a phone · {rows.filter((r) => !r.username).length} usernames and {rows.filter((r) => !r.password).length} passwords will be generated.</p>
           <div className="mt-2 flex gap-2">
             <Button onClick={upload} loading={busy}>{busy ? 'Uploading…' : `Create ${rows.length} ${L.many}`}</Button>
             <Button variant="secondary" disabled={busy} onClick={() => { setRows(null); setFileName(''); if (fileRef.current) fileRef.current.value = '' }}>Cancel</Button>
@@ -323,7 +339,7 @@ function BulkUpload({ event, kind, L, canReveal, onCreated, say }) {
             <table className="w-full text-xs">
               <tbody>
                 {created.map((c) => (
-                  <tr key={c.id}><td className="pr-3 py-0.5">{c.name ?? c.stall}</td><td className="pr-3 font-mono">{c.username}</td><td className="font-mono">{canReveal ? c.password : MASK}</td></tr>
+                  <tr key={c.id}><td className="pr-3 py-0.5">{c.name ?? c.stall}</td><td className="pr-3 text-gray-600">{c.phone ?? '—'}</td><td className="pr-3 font-mono">{c.username}</td><td className="font-mono">{canReveal ? c.password : MASK}</td></tr>
                 ))}
               </tbody>
             </table>
