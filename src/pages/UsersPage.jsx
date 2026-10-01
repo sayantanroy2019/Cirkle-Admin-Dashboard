@@ -31,6 +31,10 @@ export default function UsersPage() {
   const cityLabel = (cityId) =>
     (cities.data ?? []).find((c) => c.id === cityId)?.label ?? cityId ?? '—'
 
+  // Indian numbers read better without the country code in a dense table;
+  // anything else (the ~1% non-+91 numbers, or a BD-masked value) is left as is.
+  const localPhone = (phone) => (typeof phone === 'string' && phone.startsWith('+91') ? phone.slice(3) : phone)
+
   const columns = [
     {
       key: 'name',
@@ -41,8 +45,20 @@ export default function UsersPage() {
     { key: 'age', header: 'Age', className: 'tabular-nums', render: (u) => u.age ?? '—' },
     { key: 'gender', header: 'Gender', render: (u) => titleCaseOrDash(u.gender) },
     { key: 'city', header: 'City', render: (u) => cityLabel(u.cityId) },
-    { key: 'phone', header: 'Phone', render: (u) => <Phone value={u.phone} /> },
+    { key: 'phone', header: 'Phone', render: (u) => <Phone value={localPhone(u.phone)} /> },
     { key: 'email', header: 'Email', render: (u) => <Email value={u.email} /> },
+    {
+      key: 'eventTypes',
+      header: 'Type of event',
+      // The categories of the events this user has requested invitations to,
+      // in the order they first asked — "Trips, Meetups". Purchases don't count.
+      render: (u) =>
+        u.requestedEventTypes?.length ? (
+          <span>{u.requestedEventTypes.join(', ')}</span>
+        ) : (
+          <span className="text-gray-400">—</span>
+        ),
+    },
     { key: 'tickets', header: 'Tickets', className: 'tabular-nums', render: (u) => u.ticketCount },
     { key: 'orders', header: 'Orders', className: 'tabular-nums', render: (u) => u.orderCount },
     { key: 'joined', header: 'Joined', render: (u) => formatDate(u.createdAt) },
