@@ -53,5 +53,20 @@ export const createMenuItem = async (stallId, payload) => (await api.post(`/admi
 export const updateMenuItem = async (itemId, payload) => (await api.patch(`/admin/fnb/items/${itemId}`, payload)).data.item
 export const deleteMenuItem = async (itemId) => (await api.delete(`/admin/fnb/items/${itemId}`)).data
 
+/* ── Wallet settings (§1.6) ─────────────────────────────────────────── */
+
+export const getWalletSettings = async () => (await api.get('/admin/fnb/settings')).data.settings
+export const updateWalletSettings = async (payload) => (await api.put('/admin/fnb/settings', payload)).data.settings
+
+/* ── Sales (Part 3) ─────────────────────────────────────────────────── */
+
+/** Paginated bills for an event: params { stallId?, status?, limit, offset } → { rows, total, limit, offset } */
+export const listSales = async (eventId, params) => {
+  const { data } = await api.get(`/admin/fnb/events/${eventId}/sales`, { params: clean(params) })
+  return { rows: data.data ?? [], total: data.total ?? 0, limit: data.limit ?? 50, offset: data.offset ?? 0 }
+}
+/** The only way a sale is undone (spec §3.5). → { sale, wallet } */
+export const reverseSale = async (saleId, reason) => (await api.post(`/admin/fnb/sales/${saleId}/reverse`, { reason })).data
+
 /** Row-level reasons from an all-or-nothing upload, if the error carries them. */
 export const uploadErrors = (err) => err?.response?.data?.errors ?? null

@@ -23,6 +23,7 @@ import AdminEditPage from './pages/AdminEditPage'
 import FnbEventsPage from './pages/fnb/FnbEventsPage'
 import FnbEventCreatePage from './pages/fnb/FnbEventCreatePage'
 import FnbEventDetailPage from './pages/fnb/FnbEventDetailPage'
+import WalletSettingsPage from './pages/fnb/WalletSettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { LANDING_PATH } from './nav'
 
@@ -57,8 +58,9 @@ export default function App() {
 
             {/* F&B vertical — Part 1: events, counter users, menus. */}
             <Route path="/fnb" element={<FnbEventsPage />} />
-            {/* /new before /:id so it isn't swallowed as an event id. */}
+            {/* /new and /settings before /:id so they aren't swallowed as an event id. */}
             <Route path="/fnb/new" element={<FnbEventCreatePage />} />
+            <Route path="/fnb/settings" element={<WalletSettingsPage />} />
             <Route path="/fnb/:id" element={<FnbEventDetailPage />} />
 
             {/* The portal's one role gate. Nested inside Layout so a BD admin
