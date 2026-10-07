@@ -13,6 +13,7 @@ import Tabs from '../../components/Tabs'
 import FnbEventForm, { eventToForm, validateForm, formToPayload } from '../../components/fnb/FnbEventForm'
 import CounterUsersTab from '../../components/fnb/CounterUsersTab'
 import MenusTab from '../../components/fnb/MenusTab'
+import SalesTab from '../../components/fnb/SalesTab'
 import { FNB_STATUS_TONE } from './FnbEventsPage'
 
 const STATUS_HELP = {
@@ -29,6 +30,8 @@ const TABS = [
   { id: 'topup', label: 'Top‑up users' },
   { id: 'stall', label: 'Stall counter users' },
   { id: 'menu', label: 'Menus' },
+  // Part 3: every bill at the event, and the only place a bill is reversed.
+  { id: 'sales', label: 'Sales' },
 ]
 
 export default function FnbEventDetailPage() {
@@ -122,6 +125,7 @@ export default function FnbEventDetailPage() {
         {tab === 'topup' && <CounterUsersTab event={event} kind="topup" onChanged={reload} />}
         {tab === 'stall' && <CounterUsersTab event={event} kind="stall" onChanged={reload} />}
         {tab === 'menu' && <MenusTab event={event} onChanged={reload} />}
+        {tab === 'sales' && <SalesTab event={event} onChanged={reload} />}
       </div>
     </>
   )
