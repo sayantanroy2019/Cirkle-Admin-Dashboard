@@ -20,6 +20,7 @@ export const eventToForm = (e) => ({
   venueAddress: e?.venueAddress ?? '',
   startsAt: e?.startsAt ? isoToLocalInput(e.startsAt) : '',
   endsAt: e?.endsAt ? isoToLocalInput(e.endsAt) : '',
+  expiryHoursAfterEnd: e?.expiryHoursAfterEnd === null || e?.expiryHoursAfterEnd === undefined ? '' : String(e.expiryHoursAfterEnd),
 })
 
 export const validateForm = (f) => {
@@ -29,6 +30,10 @@ export const validateForm = (f) => {
   if (!code) errs.code = 'Enter a short event code.'
   else if (!EVENT_CODE_RE.test(code)) errs.code = '2–8 lowercase letters or digits, e.g. neon.'
   if (f.startsAt && f.endsAt && new Date(f.endsAt) < new Date(f.startsAt)) errs.endsAt = 'End must be after start.'
+  if (f.expiryHoursAfterEnd.trim() !== '') {
+    const n = Number(f.expiryHoursAfterEnd)
+    if (!Number.isInteger(n) || n < 0 || n > 720) errs.expiryHoursAfterEnd = 'Whole hours, 0–720, or leave blank for the default.'
+  }
   return errs
 }
 
@@ -43,6 +48,7 @@ export const formToPayload = (f) => ({
   venueAddress: f.venueAddress.trim() || null,
   startsAt: f.startsAt ? localInputToIso(f.startsAt) : null,
   endsAt: f.endsAt ? localInputToIso(f.endsAt) : null,
+  expiryHoursAfterEnd: f.expiryHoursAfterEnd.trim() === '' ? null : Number(f.expiryHoursAfterEnd),
 })
 
 /**
@@ -113,6 +119,18 @@ export default function FnbEventForm({ form, errors, onChange, disabled, isEdit 
       <Field type="datetime-local" label="Start (reference only)" value={form.startsAt} onChange={set('startsAt')} disabled={disabled}
         hint="Recorded for reference. Nothing enforces it — counters transact whenever the event is Live." />
       <Field type="datetime-local" label="End (reference only)" value={form.endsAt} onChange={set('endsAt')} error={errors.endsAt} disabled={disabled} />
+
+      <Field
+        type="number"
+        label="Delete unspent balance after the event ends (hours)"
+        value={form.expiryHoursAfterEnd}
+        onChange={set('expiryHoursAfterEnd')}
+        error={errors.expiryHoursAfterEnd}
+        disabled={disabled}
+        placeholder="Default from Wallet settings"
+        className="md:col-span-2"
+        hint="Counted from the moment the event is set to Ended. Whatever attendees have not spent by then is deleted and not refunded. Leave blank to use the global value in Wallet settings."
+      />
     </div>
   )
 }

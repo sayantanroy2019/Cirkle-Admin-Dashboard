@@ -34,6 +34,7 @@ export const NAV_GROUPS = [
     items: [
       { to: '/fnb', label: 'F&B events', built: true },
       { to: '/fnb/settings', label: 'Wallet settings', built: true },
+      { to: '/fnb/wallets', label: 'Wallets', built: true },
     ],
   },
   {
