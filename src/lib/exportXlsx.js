@@ -103,3 +103,22 @@ export function slugForFilename(text, fallback = 'all') {
 export function todayForFilename() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())
 }
+
+/**
+ * Several sheets in one workbook — the F&B dashboard export (top-ups and
+ * bills side by side). `sheets` is [{ name, rows, columns }] with the same
+ * column shape as exportToXlsx.
+ */
+export async function exportWorkbook({ filename, sheets }) {
+  const XLSX = await loadXlsx()
+  const wb = XLSX.utils.book_new()
+  for (const { name, rows, columns } of sheets) {
+    const data = rows.map((row) => Object.fromEntries(columns.map((c) => [c.header, cellValue(c.value(row))])))
+    const ws = XLSX.utils.json_to_sheet(data, { header: columns.map((c) => c.header) })
+    ws['!cols'] = columns.map((c) => ({
+      wch: Math.min(48, Math.max(c.header.length + 2, ...data.map((d) => String(d[c.header] ?? '').length + 2))),
+    }))
+    XLSX.utils.book_append_sheet(wb, ws, String(name).slice(0, 31))
+  }
+  XLSX.writeFile(wb, filename)
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { getFnbEvent, updateFnbEvent } from '../../api/fnb'
+import { getFnbEvent, updateFnbEvent, getFnbDashboard, getFnbDashboardExport, reverseSale } from '../../api/fnb'
 import useAsync from '../../hooks/useAsync'
 import { errorMessage, isConflict } from '../../lib/errors'
 import { titleCaseOrDash } from '../../lib/format'
@@ -14,6 +14,8 @@ import FnbEventForm, { eventToForm, validateForm, formToPayload } from '../../co
 import CounterUsersTab from '../../components/fnb/CounterUsersTab'
 import MenusTab from '../../components/fnb/MenusTab'
 import SalesTab from '../../components/fnb/SalesTab'
+import FnbDashboard from '../../components/fnb/FnbDashboard'
+import { formatPaise } from '../../lib/format'
 import { FNB_STATUS_TONE } from './FnbEventsPage'
 
 const STATUS_HELP = {
@@ -26,6 +28,8 @@ const STATUS_HELP = {
 // the organizer field on the Details tab — the linked account sees the event
 // in the organizer dashboard's F&B section.
 const TABS = [
+  // Part 4: the live dashboard — the same view the organizer dashboard shows.
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'details', label: 'Details' },
   { id: 'topup', label: 'Top‑up users' },
   { id: 'stall', label: 'Stall counter users' },
@@ -37,8 +41,9 @@ const TABS = [
 export default function FnbEventDetailPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
-  const tab = TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'details'
-  const setTab = (t) => setParams(t === 'details' ? {} : { tab: t }, { replace: true })
+  const tab = TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'dashboard'
+  // The default tab (Dashboard) is the bare URL; every other tab carries ?tab=.
+  const setTab = (t) => setParams(t === 'dashboard' ? {} : { tab: t }, { replace: true })
 
   const fetcher = useCallback(() => getFnbEvent(id), [id])
   const { data: event, loading, error, reload } = useAsync(fetcher)
@@ -121,6 +126,21 @@ export default function FnbEventDetailPage() {
       </div>
 
       <div className="mt-6">
+        {tab === 'dashboard' && (
+          <FnbDashboard
+            load={() => getFnbDashboard(event.id)}
+            loadExport={() => getFnbDashboardExport(event.id)}
+            canReverse
+            onReverse={async (bill) => {
+              const reason = window.prompt(
+                `Reverse bill #${bill.billNo} (${formatPaise(bill.totalPaise)} at ${bill.stallName})?\n\nThe attendee's wallet is re-credited immediately and they are told on WhatsApp. Enter the reason:`,
+              )
+              if (reason === null) return
+              if (!reason.trim()) throw new Error('A reason is required.')
+              await reverseSale(bill.id, reason.trim())
+            }}
+          />
+        )}
         {tab === 'details' && <DetailsTab event={event} onSaved={reload} />}
         {tab === 'topup' && <CounterUsersTab event={event} kind="topup" onChanged={reload} />}
         {tab === 'stall' && <CounterUsersTab event={event} kind="stall" onChanged={reload} />}

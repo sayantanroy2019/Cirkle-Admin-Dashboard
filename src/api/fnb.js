@@ -70,3 +70,11 @@ export const reverseSale = async (saleId, reason) => (await api.post(`/admin/fnb
 
 /** Row-level reasons from an all-or-nothing upload, if the error carries them. */
 export const uploadErrors = (err) => err?.response?.data?.errors ?? null
+
+/* ── Wallets (Part 5, card 4: lock / unlock) ──────────────────────────── */
+export const lookupWallet = async (phone) => (await api.get('/admin/fnb/wallets', { params: { phone } })).data
+export const unlockWallet = async (holderId, reason) => (await api.post(`/admin/fnb/wallets/${holderId}/unlock`, { reason })).data
+
+/* ── Dashboard (Part 4) ───────────────────────────────────────────────── */
+export const getFnbDashboard = async (eventId) => (await api.get(`/admin/fnb/events/${eventId}/dashboard`)).data
+export const getFnbDashboardExport = async (eventId) => (await api.get(`/admin/fnb/events/${eventId}/dashboard/export`)).data
