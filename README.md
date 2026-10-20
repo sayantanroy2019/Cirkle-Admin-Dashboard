@@ -236,6 +236,39 @@ Phone and email render only through `components/Contact.jsx`, mirroring the
 backend's serializer discipline — when a `view_pii` capability lands, masking is
 a one-file change here rather than a dozen table cells.
 
+## Deleting an event
+
+One button, two outcomes, and the backend decides (`DELETE /admin/events/:id`,
+added 2026-10-20):
+
+- **Untouched** — no orders (any status), no tickets, no invitations → the row
+  is hard-deleted with its categories, artists, photos, coupons and popup.
+  Response `{ outcome: 'deleted' }`.
+- **Touched** — anything else → **cancelled**: `cancelledAt`, `cancelReason`
+  and `cancelledBy` are set and the row is kept, so orders, tickets and revenue
+  keep their event. Attendees stop seeing it and can't buy into it; every
+  mutation answers 409 `event_cancelled`. Response `{ outcome: 'cancelled',
+  event }` — the full detail projection, safe to replace with.
+
+`GET /admin/events/:id/deletion-preview` says which outcome is coming, with
+counts (`paidPaise` is the refund liability) and blockers.
+[`DeleteEventDialog`](src/components/DeleteEventDialog.jsx) fetches it on open,
+puts the outcome in plain words
+([`lib/eventDeletion.js`](src/lib/eventDeletion.js), unit-tested), then needs
+the event's name typed exactly. The backend verifies the typed name too and
+decides under a row lock — the dialog explains, it doesn't enforce. A linked
+F&B event blocks the *delete* path only (that FK is `SET NULL`, so the link
+would silently vanish); the dialog links to it so it can be unlinked there.
+
+A cancelled event in the portal: a red **Cancelled** badge on the list, a notice
+on the detail page (who, when, why), every card inside a disabled `<fieldset>`,
+no Save and no Delete. Refunds are **not** automatic — Orders still lists the
+paid orders and money moves by hand. There is no un-cancel.
+
+Codes ride in `error` with prose in `message`, the same convention as the admin
+lockout 409s: `confirm_name_mismatch`, `reason_too_long` (400);
+`already_cancelled`, `fnb_event_linked`, `event_cancelled` (409).
+
 ## Build progress
 
 - [x] **0** Foundation — API layer, auth store, role-aware routing, sidebar shell

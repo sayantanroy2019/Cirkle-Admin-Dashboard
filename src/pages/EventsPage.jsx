@@ -167,6 +167,7 @@ export default function EventsPage() {
                 ) : (
                   events.map((e) => {
                     const past = isPast(e.startsAt)
+                    const cancelled = Boolean(e.cancelledAt)
                     return (
                       <tr
                         key={e.id}
@@ -228,7 +229,11 @@ export default function EventsPage() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
-                          <Badge tone={past ? 'gray' : 'green'}>{past ? 'Past' : 'Upcoming'}</Badge>
+                          {/* Cancelled wins over the date: a cancelled event is
+                              neither coming up nor finished. */}
+                          <Badge tone={cancelled ? 'red' : past ? 'gray' : 'green'}>
+                            {cancelled ? 'Cancelled' : past ? 'Past' : 'Upcoming'}
+                          </Badge>
                         </td>
                       </tr>
                     )
