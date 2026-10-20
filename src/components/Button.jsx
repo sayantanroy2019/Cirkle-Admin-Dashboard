@@ -10,6 +10,9 @@ const VARIANTS = {
   // Deactivating is reversible, so this reads as serious rather than alarming:
   // amber text on a hairline border, not a solid red block.
   caution: 'border border-amber-300 bg-white text-amber-700 hover:bg-amber-50',
+  // Deleting is not reversible, so this one IS the solid red block. Used
+  // only behind a typed-name confirmation.
+  danger: 'bg-red-600 text-white hover:bg-red-700',
 }
 
 export default function Button({

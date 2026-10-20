@@ -6,6 +6,7 @@ import useEventOptions from '../hooks/useEventOptions'
 import { errorMessage } from '../lib/errors'
 import { EVENT_TYPE_LABELS, formatDateTime, isPast } from '../lib/format'
 import { changedEventFields, eventToForm, validateEventForm } from '../lib/eventForm'
+import { isCancelled } from '../lib/eventDeletion'
 import PageHeader from '../components/PageHeader'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
@@ -17,6 +18,8 @@ import LineupManager from '../components/LineupManager'
 import TicketCategories from '../components/TicketCategories'
 import CouponManager from '../components/CouponManager'
 import PromoPopupCard from '../components/PromoPopupCard'
+import DeleteEventCard from '../components/DeleteEventCard'
+import DeleteEventDialog from '../components/DeleteEventDialog'
 import Spinner from '../components/Spinner'
 
 function Card({ title, description, children }) {
@@ -46,6 +49,7 @@ export default function EventDetailPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [flash, setFlash] = useState(location.state?.flash ?? '')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   useEffect(() => {
     if (location.state?.flash) {
@@ -154,6 +158,10 @@ export default function EventDetailPage() {
   }
 
   const past = isPast(event.startsAt)
+  // Cancelled = read-only. The backend refuses every mutation with 409
+  // anyway; disabling the controls here just stops the admin finding that
+  // out one button at a time.
+  const cancelled = isCancelled(event)
 
   return (
     <>
@@ -170,10 +178,14 @@ export default function EventDetailPage() {
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            past ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-700'
+            cancelled
+              ? 'bg-red-50 text-red-700'
+              : past
+                ? 'bg-gray-100 text-gray-600'
+                : 'bg-green-50 text-green-700'
           }`}
         >
-          {past ? 'Past' : 'Upcoming'}
+          {cancelled ? 'Cancelled' : past ? 'Past' : 'Upcoming'}
         </span>
         <span>{formatDateTime(event.startsAt)}</span>
         <span>{EVENT_TYPE_LABELS[event.eventType] ?? event.eventType}</span>
@@ -200,7 +212,24 @@ export default function EventDetailPage() {
         </Alert>
       )}
 
-      <div className="mt-6 space-y-5">
+      {cancelled && (
+        <Alert className="mt-4" tone="error">
+          <p className="font-medium">
+            Cancelled on {formatDateTime(event.cancelledAt)}
+            {event.cancelledBy ? ` by ${event.cancelledBy.displayName}` : ''}.
+          </p>
+          {event.cancelReason && <p className="mt-1">Reason: {event.cancelReason}</p>}
+          <p className="mt-1">
+            Attendees no longer see this event and nothing here can be changed. Its orders and
+            tickets are still in Oversight.
+          </p>
+        </Alert>
+      )}
+
+      {/* A disabled fieldset switches off every control inside it at once —
+          inputs, file pickers, save buttons — without threading a prop through
+          seven managers. Links keep working. */}
+      <fieldset disabled={cancelled} className="mt-6 min-w-0 space-y-5">
         <div className="max-w-2xl">
           <Card title="Details">
             <form onSubmit={handleSave} className="space-y-5" noValidate>
@@ -215,9 +244,11 @@ export default function EventDetailPage() {
                 disabled={saving}
               />
 
-              <Button type="submit" loading={saving}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
+              {!cancelled && (
+                <Button type="submit" loading={saving}>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+              )}
             </form>
           </Card>
         </div>
@@ -293,7 +324,34 @@ export default function EventDetailPage() {
             onChange={(gallery) => setEvent((prev) => ({ ...prev, gallery }))}
           />
         </Card>
-      </div>
+      </fieldset>
+
+      {!cancelled && (
+        <div className="mt-5">
+          <DeleteEventCard onOpen={() => setConfirmingDelete(true)} />
+        </div>
+      )}
+
+      {confirmingDelete && (
+        <DeleteEventDialog
+          event={event}
+          onClose={() => setConfirmingDelete(false)}
+          onDeleted={() => navigate('/events', { state: { flash: `“${event.name}” was deleted.` } })}
+          onCancelled={(updated) => {
+            // The DELETE response is the full detail projection — same as
+            // GET — so replacing is safe here. (PATCH's is not; see applyUpdate.)
+            setConfirmingDelete(false)
+            setEvent(updated)
+            setForm(eventToForm(updated))
+            setFlash('Event cancelled. Attendees no longer see it; its orders and tickets are kept.')
+          }}
+          onAlreadyCancelled={() => {
+            // Someone else got there first — show them the cancelled page.
+            setConfirmingDelete(false)
+            load()
+          }}
+        />
+      )}
     </>
   )
 }

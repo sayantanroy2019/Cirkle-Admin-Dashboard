@@ -13,8 +13,12 @@ import api from './client'
  *     organizerId, createdAt, updatedAt, bannerUrl }
  * plus `organizerName` on the list, and `gallery` + `organizer` on detail.
  *
- * `price` is in PAISE. There is no ticket-sold count on these endpoints, and
- * no DELETE — events cannot be removed.
+ * `price` is in PAISE. There is no ticket-sold count on these endpoints.
+ *
+ * Deleting (added 2026-10-20) is one call with two outcomes, decided by the
+ * backend: an event nobody has ordered, bought or asked for an invitation to
+ * is hard-deleted; anything else is cancelled — kept for orders, tickets and
+ * revenue, hidden from attendees, frozen. See getDeletionPreview/deleteEvent.
  */
 
 /** Filters: { organizerId, cityId, status: 'upcoming' | 'past' }. Server-side. */
@@ -48,6 +52,38 @@ export const createEvent = async (payload) => {
 export const updateEvent = async (id, payload) => {
   const { data } = await api.patch(`/admin/events/${id}`, payload)
   return data.event
+}
+
+/* ── Deletion ───────────────────────────────────────────────────────────── */
+
+/**
+ * What DELETE would do to this event right now, so the dialog can say which
+ * before the admin types the name:
+ *   { outcome: 'delete' | 'cancel', blockers: ['fnb_event_linked'?],
+ *     fnbEvents: [{ id, name }], counts: { orders, paidOrders, paidPaise,
+ *     tickets, invitations, categories, artists, photos, coupons, promoPopups } }
+ * Advisory — the DELETE recomputes under a lock. 409 `already_cancelled`.
+ */
+export const getDeletionPreview = async (id) => {
+  const { data } = await api.get(`/admin/events/${id}/deletion-preview`)
+  return data
+}
+
+/**
+ * Delete or cancel. The backend decides the outcome and verifies the typed
+ * name itself, so the confirmation can't be bypassed by a stray call.
+ * Resolves to `{ outcome: 'deleted' }` or `{ outcome: 'cancelled', event }`
+ * (the full detail projection, safe to replace with).
+ *
+ * 400 `confirm_name_mismatch` | `reason_too_long`;
+ * 409 `already_cancelled` | `fnb_event_linked` (body carries `fnbEvents`).
+ * Codes are in `error`, prose in `message` — errorMessage() shows the prose.
+ */
+export const deleteEvent = async (id, { confirmName, reason }) => {
+  const { data } = await api.delete(`/admin/events/${id}`, {
+    data: { confirmName, reason: reason || undefined },
+  })
+  return data
 }
 
 /* ── Images ─────────────────────────────────────────────────────────────
