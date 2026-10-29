@@ -132,7 +132,13 @@ export default function FnbDashboard({ load, loadExport, canReverse = false, onR
             columns: [
               { header: 'Time', value: (r) => whenFull(r.at) },
               { header: 'Method', value: (r) => r.method },
-              { header: 'Amount (₹)', value: (r) => r.amountPaise / 100 },
+              // Three numbers per top-up: what the attendee paid, what the
+              // wallet got, and the GST between them (0 unless the event
+              // adds GST to top-ups).
+              { header: 'Collected (₹)', value: (r) => (r.collectedPaise ?? r.amountPaise) / 100 },
+              { header: 'To wallet (₹)', value: (r) => r.amountPaise / 100 },
+              { header: 'GST (₹)', value: (r) => (r.gstPaise ?? 0) / 100 },
+              { header: 'GST %', value: (r) => r.gstPercentage ?? 0 },
               { header: 'Status', value: (r) => r.status },
               { header: 'Counter', value: (r) => r.counter },
               { header: 'Attendee', value: (r) => r.firstName ?? '' },
@@ -216,13 +222,18 @@ export default function FnbDashboard({ load, loadExport, canReverse = false, onR
       </div>
       {notice && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{notice}</p>}
 
-      {/* Tiles */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Tile label="Money in" value={formatPaise(t.topups.totalPaise)} tone="purple"
+      {/* Tiles. On a GST event "Money in" is what reached wallets; what was
+          actually collected (incl. GST) and the GST itself get their own tile. */}
+      <div className={`grid gap-4 sm:grid-cols-2 ${ev.walletGstEnabled ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
+        <Tile label={ev.walletGstEnabled ? 'Into wallets' : 'Money in'} value={formatPaise(t.topups.totalPaise)} tone="purple"
           note={`${t.topups.count} top-ups · cash ${formatPaise(t.topups.cash.paise)} · UPI ${formatPaise(t.topups.upi.paise)} · online ${formatPaise(t.topups.online.paise)}`} />
+        {ev.walletGstEnabled && (
+          <Tile label="GST collected" value={formatPaise(t.topups.gstPaise ?? 0)} tone="amber"
+            note={`${formatPaise(t.topups.collectedPaise ?? t.topups.totalPaise)} collected in all, GST included${(t.refunds.gstPaise ?? 0) > 0 ? ` · ${formatPaise(t.refunds.gstPaise)} of it refunded` : ''}`} />
+        )}
         <Tile label="Sales" value={formatPaise(t.sales.paise)} tone="green" note={`${t.sales.bills} bills paid`} />
-        <Tile label="Refunds & reversals" value={formatPaise(t.refunds.paise + t.sales.reversedPaise)} tone="amber"
-          note={`${t.refunds.count} cash refunds ${formatPaise(t.refunds.paise)} · ${t.sales.reversed} bills reversed ${formatPaise(t.sales.reversedPaise)}`} />
+        <Tile label="Refunds & reversals" value={formatPaise((t.refunds.collectedPaise ?? t.refunds.paise) + t.sales.reversedPaise)} tone="amber"
+          note={`${t.refunds.count} cash refunds ${formatPaise(t.refunds.collectedPaise ?? t.refunds.paise)}${ev.walletGstEnabled ? ' (GST incl.)' : ''} · ${t.sales.reversed} bills reversed ${formatPaise(t.sales.reversedPaise)}`} />
         <Tile label="Still in wallets" value={formatPaise(t.inWalletsPaise)} note={`${t.attendeesWithBalance} of ${t.wallets} attendees hold a balance`} />
         <Tile label="Expired" value={formatPaise(t.expiredPaise)} note={ev.expired ? 'deleted after the event ended' : 'deleted after the event ends'} />
       </div>
@@ -263,25 +274,35 @@ export default function FnbDashboard({ load, loadExport, canReverse = false, onR
               <thead className="text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-2">Volunteer</th>
-                  <th className="px-3 py-2 text-right">Cash in</th>
+                  <th className="px-3 py-2 text-right">Cash collected</th>
                   <th className="px-3 py-2 text-right">Refunded</th>
                   <th className="px-3 py-2 text-right">To hand over</th>
+                  {ev.walletGstEnabled && <th className="px-3 py-2 text-right">of which GST</th>}
                   <th className="px-5 py-2 text-right">UPI</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {data.counters.map((c) => (
-                  <tr key={c.id} className={c.active ? '' : 'text-gray-400'}>
-                    <td className="px-5 py-2">
-                      <span className="font-medium text-gray-900">{c.name}</span>
-                      <span className="ml-2 text-xs text-gray-500">{c.topups} top-ups{c.refunds ? ` · ${c.refunds} refunds` : ''}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatPaise(c.cashInPaise)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{c.cashRefundPaise ? `− ${formatPaise(c.cashRefundPaise)}` : '—'}</td>
-                    <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900">{formatPaise(c.cashNetPaise)}</td>
-                    <td className="px-5 py-2 text-right tabular-nums">{formatPaise(c.upiPaise)}</td>
-                  </tr>
-                ))}
+                {/* The drawer holds what was COLLECTED (GST included on a GST
+                    event), minus refunds handed back in full. Falls back to the
+                    wallet figures where the fields are absent. */}
+                {data.counters.map((c) => {
+                  const cashIn = c.cashCollectedPaise ?? c.cashInPaise
+                  const drawer = c.cashDrawerPaise ?? c.cashNetPaise
+                  const refunded = cashIn - drawer
+                  return (
+                    <tr key={c.id} className={c.active ? '' : 'text-gray-400'}>
+                      <td className="px-5 py-2">
+                        <span className="font-medium text-gray-900">{c.name}</span>
+                        <span className="ml-2 text-xs text-gray-500">{c.topups} top-ups{c.refunds ? ` · ${c.refunds} refunds` : ''}</span>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatPaise(cashIn)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{refunded ? `− ${formatPaise(refunded)}` : '—'}</td>
+                      <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900">{formatPaise(drawer)}</td>
+                      {ev.walletGstEnabled && <td className="px-3 py-2 text-right tabular-nums text-gray-600">{formatPaise(c.gstPaise ?? 0)}</td>}
+                      <td className="px-5 py-2 text-right tabular-nums">{formatPaise(c.upiCollectedPaise ?? c.upiPaise)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
@@ -302,8 +323,11 @@ export default function FnbDashboard({ load, loadExport, canReverse = false, onR
                   </span>
                   <span className="ml-2 text-xs text-gray-500">{who(r)} · {whenTime(r.at)}</span>
                 </div>
-                <span className={`shrink-0 font-semibold tabular-nums ${r.kind === 'topup' || r.kind === 'reversal' ? 'text-green-700' : 'text-gray-900'}`}>
+                <span className={`shrink-0 text-right font-semibold tabular-nums ${r.kind === 'topup' || r.kind === 'reversal' ? 'text-green-700' : 'text-gray-900'}`}>
                   {r.kind === 'topup' || r.kind === 'reversal' ? '+' : '−'}{formatPaise(r.amountPaise)}
+                  {r.collectedPaise != null && r.collectedPaise !== r.amountPaise && (
+                    <span className="block text-xs font-normal text-gray-500">{r.kind === 'refund' ? 'refunded' : 'paid'} {formatPaise(r.collectedPaise)} incl. GST</span>
+                  )}
                 </span>
               </li>
             ))}

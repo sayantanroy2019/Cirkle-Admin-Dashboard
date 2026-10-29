@@ -269,6 +269,27 @@ Codes ride in `error` with prose in `message`, the same convention as the admin
 lockout 409s: `confirm_name_mismatch`, `reason_too_long` (400);
 `already_cancelled`, `fnb_event_linked`, `event_cancelled` (409).
 
+## F&B: GST on wallet top-ups
+
+A per-event switch on the F&B event form (added 2026-10-29): *Add GST to
+wallet top-ups (cover charge)*. Off by default. On a GST event an attendee who
+tops up ₹1,000 pays ₹1,180 — the wallet is credited ₹1,000, ₹180 is GST at the
+platform rate — and every top-up row carries three numbers: `collectedPaise`,
+`amountPaise` (to wallet) and `gstPaise`, frozen with `gstPercentage`. Stall
+purchases never carry GST.
+
+- The backend **locks the switch** once the event has any top-up (409
+  `wallet_gst_locked`, code in `error`, prose in `message`). The form greys it
+  out beforehand using `counts.topups` on the event payload, and lands the 409
+  on the field if two admins race.
+- The dashboard shows an extra **GST collected** tile on GST events, the cash
+  reconciliation table counts what the drawer physically holds (collected,
+  GST included, minus refunds given back in full), the recent-activity feed
+  and the Excel export carry collected / to-wallet / GST per top-up.
+- Refunds (voids) return the full collected amount. Limits and quick amounts
+  apply to the wallet amount; cash top-ups on a GST event must total whole
+  rupees (multiples of ₹50 at 18%), UPI and online can take any amount.
+
 ## Build progress
 
 - [x] **0** Foundation — API layer, auth store, role-aware routing, sidebar shell

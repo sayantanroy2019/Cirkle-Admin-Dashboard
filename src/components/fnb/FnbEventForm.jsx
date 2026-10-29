@@ -6,6 +6,7 @@ import useAsync from '../../hooks/useAsync'
 import { isoToLocalInput, localInputToIso } from '../../lib/format'
 import Field from '../Field'
 import Select from '../Select'
+import Checkbox from '../Checkbox'
 
 export const EVENT_CODE_RE = /^[a-z0-9]{2,8}$/
 
@@ -21,6 +22,9 @@ export const eventToForm = (e) => ({
   startsAt: e?.startsAt ? isoToLocalInput(e.startsAt) : '',
   endsAt: e?.endsAt ? isoToLocalInput(e.endsAt) : '',
   expiryHoursAfterEnd: e?.expiryHoursAfterEnd === null || e?.expiryHoursAfterEnd === undefined ? '' : String(e.expiryHoursAfterEnd),
+  // Cover-charge events add GST to every top-up. Off by default; the backend
+  // locks it once the event has a top-up (409 wallet_gst_locked).
+  walletGstEnabled: e?.walletGstEnabled ?? false,
 })
 
 export const validateForm = (f) => {
@@ -49,6 +53,7 @@ export const formToPayload = (f) => ({
   startsAt: f.startsAt ? localInputToIso(f.startsAt) : null,
   endsAt: f.endsAt ? localInputToIso(f.endsAt) : null,
   expiryHoursAfterEnd: f.expiryHoursAfterEnd.trim() === '' ? null : Number(f.expiryHoursAfterEnd),
+  walletGstEnabled: !!f.walletGstEnabled,
 })
 
 /**
@@ -56,7 +61,7 @@ export const formToPayload = (f) => ({
  * "Dashboard access" of §1.5: the linked organizer account is who sees this
  * event in the organizer dashboard's F&B section.
  */
-export default function FnbEventForm({ form, errors, onChange, disabled, isEdit = false }) {
+export default function FnbEventForm({ form, errors, onChange, disabled, isEdit = false, gstLocked = false }) {
   const organizers = useAsync(listOrganizers, [])
   const events = useAsync(listEvents, [])
   const cities = useAsync(listCities, [])
@@ -131,6 +136,21 @@ export default function FnbEventForm({ form, errors, onChange, disabled, isEdit 
         className="md:col-span-2"
         hint="Counted from the moment the event is set to Ended. Whatever attendees have not spent by then is deleted and not refunded. Leave blank to use the global value in Wallet settings."
       />
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4 md:col-span-2">
+        <Checkbox
+          label="Add GST to wallet top-ups (cover charge)"
+          checked={!!form.walletGstEnabled}
+          onChange={(e) => onChange('walletGstEnabled', e.target.checked)}
+          disabled={disabled || gstLocked}
+          hint={
+            gstLocked
+              ? 'Locked — this event already has a top-up, so the switch can no longer change.'
+              : 'For house parties and invite-only events where the top-up is the cover charge. Attendees pay the amount plus GST (at the platform rate); the wallet is credited the amount; the GST is Cirkle’s. Off for concerts and ordinary top-ups. Can’t be changed once the first top-up happens.'
+          }
+        />
+        {errors.walletGstEnabled && <p className="mt-2 text-xs text-red-600">{errors.walletGstEnabled}</p>}
+      </div>
     </div>
   )
 }

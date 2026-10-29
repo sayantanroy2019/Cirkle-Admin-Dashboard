@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getFnbEvent, updateFnbEvent, getFnbDashboard, getFnbDashboardExport, reverseSale } from '../../api/fnb'
 import useAsync from '../../hooks/useAsync'
-import { errorMessage, isConflict } from '../../lib/errors'
+import { errorMessage, isConflict, conflictCode } from '../../lib/errors'
 import { titleCaseOrDash } from '../../lib/format'
 import PageHeader from '../../components/PageHeader'
 import Button from '../../components/Button'
@@ -111,6 +111,11 @@ export default function FnbEventDetailPage() {
       <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-500">
         <span>Code <span className="font-mono text-gray-800">{event.code}</span></span>
         <span>{event.counts.stalls} stalls · {event.counts.topupUsers} top‑up users · {event.counts.stallUsers} stall users · {event.counts.menuItems} menu items</span>
+        {event.walletGstEnabled && (
+          <Badge tone="amber" title="Attendees pay the top-up amount plus GST; the wallet is credited the amount">
+            GST on top‑ups
+          </Badge>
+        )}
       </div>
       {statusError && <Alert tone="error" className="mt-4" onDismiss={() => setStatusError('')}>{statusError}</Alert>}
 
@@ -179,7 +184,10 @@ function DetailsTab({ event, onSaved }) {
       setSaved(true)
       await onSaved()
     } catch (err) {
-      if (isConflict(err)) setErrors((x) => ({ ...x, code: 'That event code is already in use.' }))
+      // Two 409s live here: the code clash (prose in `error`) and the GST
+      // switch lock (machine code + message) — the second lands on its field.
+      if (conflictCode(err) === 'wallet_gst_locked') setErrors((x) => ({ ...x, walletGstEnabled: errorMessage(err) }))
+      else if (isConflict(err)) setErrors((x) => ({ ...x, code: 'That event code is already in use.' }))
       else setFormError(errorMessage(err, "Couldn't save the event."))
     } finally {
       setSaving(false)
@@ -191,7 +199,7 @@ function DetailsTab({ event, onSaved }) {
       {formError && <Alert tone="error" onDismiss={() => setFormError('')}>{formError}</Alert>}
       {saved && !dirty && <Alert onDismiss={() => setSaved(false)}>Event saved.</Alert>}
       <div className="rounded-xl border border-gray-200 p-5">
-        <FnbEventForm form={form} errors={errors} onChange={onChange} disabled={saving} isEdit />
+        <FnbEventForm form={form} errors={errors} onChange={onChange} disabled={saving} isEdit gstLocked={(event.counts.topups ?? 0) > 0} />
       </div>
       <div className="flex gap-3">
         <Button type="submit" loading={saving} disabled={!dirty}>{saving ? 'Saving…' : 'Save changes'}</Button>
